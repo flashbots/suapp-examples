@@ -1,0 +1,3 @@
+[submodule "suave-geth"]
+	path = suave-geth
+	url = https://github.com/flashbots/suave-geth.git
