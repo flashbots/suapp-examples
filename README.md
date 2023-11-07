@@ -19,6 +19,14 @@ $ git submodule update
 
 ## Compile the examples
 
+Install [Foundry](https://getfoundry.sh/):
+
+```
+$ curl -L https://foundry.paradigm.xyz | bash
+```
+
+Compile:
+
 ```bash
 $ forge build
 ```
