@@ -17,7 +17,10 @@ contract ConfidentialStore {
         Suave.confidentialStore(bid.id, "key1", abi.encode(1));
         Suave.confidentialStore(bid.id, "key2", abi.encode(2));
 
+        bytes memory value = Suave.confidentialRetrieve(bid.id, "key1");
+        require(keccak256(value) == keccak256(abi.encode(1)));
+
         Suave.Bid[] memory allShareMatchBids = Suave.fetchBids(10, "namespace");
-        // allShareMatchBids[0] == bid
+        require(allShareMatchBids.length == 1);
     }
 }
