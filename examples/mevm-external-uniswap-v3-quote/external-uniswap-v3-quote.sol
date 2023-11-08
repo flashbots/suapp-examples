@@ -5,7 +5,7 @@ import "../../suave-geth/suave/sol/libraries/Suave.sol";
 
 library UniswapV3 {
     address constant swapRouter = 0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45;
-    string constant exactOutputSingleSig = "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint160))";
+    string constant exactOutputSingleSig = "exactOutputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))";
 
     struct ExactOutputSingleParams {
         address tokenIn;
