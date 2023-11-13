@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -24,7 +25,13 @@ type Artifact struct {
 }
 
 func ReadArtifact(path string) (*Artifact, error) {
-	data, err := os.ReadFile(filepath.Join("out", path))
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return nil, fmt.Errorf("unable to get the current filename")
+	}
+	dirname := filepath.Dir(filename)
+
+	data, err := os.ReadFile(filepath.Join(dirname, "../out", path))
 	if err != nil {
 		return nil, err
 	}
