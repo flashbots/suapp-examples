@@ -5,8 +5,5 @@ import (
 )
 
 func main() {
-	contract := framework.DeployContract("onchain-callback.sol/OnChainCallback.json")
-
-	txnResult, _ := contract.SendTransaction("example", []interface{}{}, []byte{})
-	framework.EnsureTransactionSuccess(txnResult)
+	framework.DeployAndTransact("onchain-callback.sol/OnChainCallback.json", "example")
 }

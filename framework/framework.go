@@ -87,45 +87,58 @@ func newPrivKeyFromHex(hex string) *privKey {
 	return &privKey{Priv: key}
 }
 
-type Framework struct {
-}
-
-type Contract struct {
-	*sdk.Contract
-}
-
-func DeployContract(path string) *sdk.Contract {
+func DeployContract(path string) (*sdk.Contract, error) {
 	rpc, _ := rpc.Dial(ExNodeNetAddr)
 	mevmClt := sdk.NewClient(rpc, FundedAccount.Priv, ExNodeEthAddr)
 
 	artifact, err := ReadArtifact(path)
 	if err != nil {
-		fmt.Printf("failed to read artifact: %v\n", err)
-		os.Exit(1)
+		return nil, err
 	}
 
 	// deploy contract
 	txnResult, err := sdk.DeployContract(artifact.Code, mevmClt)
 	if err != nil {
-		fmt.Printf("failed to deploy contract: %v\n", err)
-		os.Exit(1)
+		return nil, err
 	}
 
-	receipt := EnsureTransactionSuccess(txnResult)
+	receipt, err := ensureTransactionSuccess(txnResult)
+	if err != nil {
+		return nil, err
+	}
 
 	contract := sdk.GetContract(receipt.ContractAddress, artifact.Abi, mevmClt)
-	return contract
+	return contract, nil
 }
 
-func EnsureTransactionSuccess(txn *sdk.TransactionResult) *types.Receipt {
+func ensureTransactionSuccess(txn *sdk.TransactionResult) (*types.Receipt, error) {
 	receipt, err := txn.Wait()
 	if err != nil {
-		fmt.Printf("failed to wait for transaction: %v\n", err)
-		os.Exit(1)
+		return nil, err
 	}
 	if receipt.Status == 0 {
-		fmt.Printf("failed to deploy: %v\n", receipt.Logs)
+		return nil, err
+	}
+	return receipt, nil
+}
+
+// DeployAndTransact is a helper function that deploys a suapp
+// and inmediately executes a function on it with a confidential request.
+func DeployAndTransact(path string, funcName string) {
+	contract, err := DeployContract("onchain-callback.sol/OnChainCallback.json")
+	if err != nil {
+		fmt.Printf("failed to deploy contract: %v", err)
 		os.Exit(1)
 	}
-	return receipt
+
+	txnResult, err := contract.SendTransaction("example", []interface{}{}, []byte{})
+	if err != nil {
+		fmt.Printf("failed to send transaction: %v", err)
+		os.Exit(1)
+	}
+
+	if _, err = ensureTransactionSuccess(txnResult); err != nil {
+		fmt.Printf("failed to ensure transaction success: %v", err)
+		os.Exit(1)
+	}
 }
