@@ -26,10 +26,17 @@ contract OFA {
 
         // Store the bundle and the simulation results in the confidential datastore.
         Suave.Bid memory bid = Suave.newBid();
-        Suave.confidentialStore(bid.id, "ofa-app", order);
-		Suave.confidentialStore(bid.id, "ofa-app", abi.encode(egp));
+        Suave.confidentialStore(bid.id, "mevshare:v0:ethBundles", order);
+		Suave.confidentialStore(bid.id, "mevshare:v0:ethBundleSimResults", abi.encode(egp));
 
         // Use the callback to return the hint and the id of the order.
         abi.encodeWithSelector(this.newOrderCallback.selector, bid.id, hint);
     }
+
+    function emitMatchBid(string builderUrl, Suave.Bid memory bid) internal virtual override returns (bytes memory) {
+		bytes memory bundleData = Suave.fillMevShareBundle(bid.id);
+		Suave.submitBundleJsonRPC(builderUrls, "mev_sendBundle", bundleData);
+
+		return MevShareBidContract.emitMatchBidAndHint(bid, matchHint);
+	}
 }
