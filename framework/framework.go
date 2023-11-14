@@ -125,7 +125,7 @@ func ensureTransactionSuccess(txn *sdk.TransactionResult) (*types.Receipt, error
 // DeployAndTransact is a helper function that deploys a suapp
 // and inmediately executes a function on it with a confidential request.
 func DeployAndTransact(path string, funcName string) {
-	contract, err := DeployContract("onchain-callback.sol/OnChainCallback.json")
+	contract, err := DeployContract(path)
 	if err != nil {
 		fmt.Printf("failed to deploy contract: %v", err)
 		os.Exit(1)
