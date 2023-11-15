@@ -30,7 +30,7 @@ contract OFA {
         // Store the bundle and the simulation results in the confidential datastore.
         Suave.Bid memory bid = Suave.newBid(10, addressList, addressList, "");
         Suave.confidentialStore(bid.id, "mevshare:v0:ethBundles", bundleData);
-		Suave.confidentialStore(bid.id, "mevshare:v0:ethBundleSimResults", abi.encode(egp));
+        Suave.confidentialStore(bid.id, "mevshare:v0:ethBundleSimResults", abi.encode(egp));
 
         HintOrder memory hintOrder;
         hintOrder.id = bid.id;
@@ -52,11 +52,11 @@ contract OFA {
         HintOrder memory hintOrder = saveOrder();
 
         // Merge the bids
-		Suave.BidId[] memory bids = new Suave.BidId[](2);
-		bids[0] = shareBidId;
-		bids[1] = hintOrder.id;
-		Suave.confidentialStore(hintOrder.id, "mevshare:v0:mergedBids", abi.encode(bids));
-
+        Suave.BidId[] memory bids = new Suave.BidId[](2);
+        bids[0] = shareBidId;
+        bids[1] = hintOrder.id;
+        Suave.confidentialStore(hintOrder.id, "mevshare:v0:mergedBids", abi.encode(bids));
+        
         return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
     }
 
@@ -66,7 +66,7 @@ contract OFA {
     function emitMatchBidAndHint(string memory builderUrl, Suave.BidId bidId) external payable returns (bytes memory) {
         bytes memory bundleData = Suave.fillMevShareBundle(bidId);
         Suave.submitBundleJsonRPC(builderUrl, "mev_sendBundle", bundleData);
-
+        
         return abi.encodeWithSelector(this.emitMatchBidAndHintCallback.selector);
     }
 }
