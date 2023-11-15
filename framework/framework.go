@@ -131,7 +131,7 @@ func DeployAndTransact(path string, funcName string) {
 		os.Exit(1)
 	}
 
-	txnResult, err := contract.SendTransaction("example", []interface{}{}, []byte{})
+	txnResult, err := contract.SendTransaction(funcName, []interface{}{}, []byte{})
 	if err != nil {
 		fmt.Printf("failed to send transaction: %v", err)
 		os.Exit(1)
