@@ -1,10 +1,12 @@
 package framework
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -64,27 +66,35 @@ var (
 
 	// This account is funded in both devnev networks
 	// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
-	FundedAccount = newPrivKeyFromHex("91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12")
+	FundedAccount = NewPrivKeyFromHex("91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12")
 )
 
-type privKey struct {
+type PrivKey struct {
 	Priv *ecdsa.PrivateKey
 }
 
-func (p *privKey) Address() common.Address {
+func (p *PrivKey) Address() common.Address {
 	return crypto.PubkeyToAddress(p.Priv.PublicKey)
 }
 
-func (p *privKey) MarshalPrivKey() []byte {
+func (p *PrivKey) MarshalPrivKey() []byte {
 	return crypto.FromECDSA(p.Priv)
 }
 
-func newPrivKeyFromHex(hex string) *privKey {
+func NewPrivKeyFromHex(hex string) *PrivKey {
 	key, err := crypto.HexToECDSA(hex)
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse private key: %v", err))
 	}
-	return &privKey{Priv: key}
+	return &PrivKey{Priv: key}
+}
+
+func GeneratePrivKey() *PrivKey {
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		panic(fmt.Sprintf("failed to generate private key: %v", err))
+	}
+	return &PrivKey{Priv: key}
 }
 
 func DeployContract(path string) (*sdk.Contract, error) {
@@ -141,4 +151,31 @@ func DeployAndTransact(path, funcName string) {
 		fmt.Printf("failed to ensure transaction success: %v", err)
 		os.Exit(1)
 	}
+}
+
+func FundAccount(to common.Address, value *big.Int) error {
+	rpc, _ := rpc.Dial(ExNodeNetAddr)
+	clt := sdk.NewClient(rpc, FundedAccount.Priv, ExNodeEthAddr)
+
+	txn := &types.LegacyTx{
+		Value: value,
+		To:    &to,
+	}
+	result, err := clt.SendTransaction(txn)
+	if err != nil {
+		return err
+	}
+	_, err = result.Wait()
+	if err != nil {
+		return err
+	}
+	// check balance
+	balance, err := clt.RPC().BalanceAt(context.Background(), to, nil)
+	if err != nil {
+		return err
+	}
+	if balance.Cmp(value) != 0 {
+		return fmt.Errorf("failed to fund account")
+	}
+	return nil
 }

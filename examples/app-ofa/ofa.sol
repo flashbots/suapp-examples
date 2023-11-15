@@ -4,16 +4,19 @@ pragma solidity ^0.8.8;
 import "../../suave-geth/suave/sol/libraries/Suave.sol";
 
 contract OFA {
-    event NewOrder (
+    address[] public addressList = [0xC8df3686b4Afb2BB53e60EAe97EF043FE03Fb829];
+
+    struct HintOrder {
+        Suave.BidId id;
+        bytes hint;
+    }
+
+    event HintEvent (
         Suave.BidId id,
         bytes hint
     );
-    
-    function newOrderCallback(Suave.BidId id, bytes memory hint) public payable {
-        emit NewOrder(id, hint);
-    }
 
-    function newOrder(bytes memory order) external payable returns (bytes memory) {
+    function saveOrder() internal view returns (HintOrder memory) {
         // Retrieve the bundle data from the confidential inputs
         bytes memory bundleData = Suave.confidentialInputs();
 
@@ -25,18 +28,45 @@ contract OFA {
         bytes memory hint = Suave.extractHint(bundleData);
 
         // Store the bundle and the simulation results in the confidential datastore.
-        Suave.Bid memory bid = Suave.newBid();
-        Suave.confidentialStore(bid.id, "mevshare:v0:ethBundles", order);
+        Suave.Bid memory bid = Suave.newBid(10, addressList, addressList, "");
+        Suave.confidentialStore(bid.id, "mevshare:v0:ethBundles", bundleData);
 		Suave.confidentialStore(bid.id, "mevshare:v0:ethBundleSimResults", abi.encode(egp));
 
-        // Use the callback to return the hint and the id of the order.
-        abi.encodeWithSelector(this.newOrderCallback.selector, bid.id, hint);
+        HintOrder memory hintOrder;
+        hintOrder.id = bid.id;
+        hintOrder.hint = hint;
+
+        return hintOrder;
     }
 
-    function emitMatchBid(string builderUrl, Suave.Bid memory bid) internal virtual override returns (bytes memory) {
-		bytes memory bundleData = Suave.fillMevShareBundle(bid.id);
-		Suave.submitBundleJsonRPC(builderUrls, "mev_sendBundle", bundleData);
+    function emitHint(HintOrder memory order) public payable {
+        emit HintEvent(order.id, order.hint);
+    }
 
-		return MevShareBidContract.emitMatchBidAndHint(bid, matchHint);
-	}
+    function newOrder() external payable returns (bytes memory) {
+        HintOrder memory hintOrder = saveOrder();
+        return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
+    }
+
+    function newMatch(Suave.BidId shareBidId) external payable returns (bytes memory) {
+        HintOrder memory hintOrder = saveOrder();
+
+        // Merge the bids
+		Suave.BidId[] memory bids = new Suave.BidId[](2);
+		bids[0] = shareBidId;
+		bids[1] = hintOrder.id;
+		Suave.confidentialStore(hintOrder.id, "mevshare:v0:mergedBids", abi.encode(bids));
+
+        return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
+    }
+
+    function emitMatchBidAndHintCallback() external payable {
+    }
+
+    function emitMatchBidAndHint(string memory builderUrl, Suave.BidId bidId) external payable returns (bytes memory) {
+        bytes memory bundleData = Suave.fillMevShareBundle(bidId);
+        Suave.submitBundleJsonRPC(builderUrl, "mev_sendBundle", bundleData);
+
+        return abi.encodeWithSelector(this.emitMatchBidAndHintCallback.selector);
+    }
 }
