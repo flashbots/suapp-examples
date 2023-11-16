@@ -2,9 +2,12 @@
 
 See also:
 
-- https://github.com/flashbots/suave-specs
-- https://github.com/flashbots/suave-docs
-- https://github.com/flashbots/suave-geth
+- **https://github.com/flashbots/suave-geth**
+
+Writings:
+
+- https://writings.flashbots.net/the-future-of-mev-is-suave
+- https://writings.flashbots.net/mevm-suave-centauri-and-beyond
 
 ## Getting Started
 
@@ -30,3 +33,11 @@ Compile:
 ```bash
 $ forge build
 ```
+
+## Run the examples
+
+Check out the [`/examples/`](/examples/) folder for several example Suapps and `main.go` files to deploy and run them!
+
+---
+
+Happy hacking 🛠️
