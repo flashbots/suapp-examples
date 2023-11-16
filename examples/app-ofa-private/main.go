@@ -19,7 +19,7 @@ func main() {
 	defer fakeRelayer.Close()
 
 	fr := framework.NewFr()
-	contract := fr.DeployContract("ofa.sol/OFA.json")
+	contract := fr.DeployContract("ofa-private.sol/OFAPrivate.json")
 
 	// Step 1. Create and fund the accounts we are going to frontrun/backrun
 	fmt.Println("1. Create and fund test accounts")
@@ -95,7 +95,7 @@ func main() {
 var hintEventABI abi.Event
 
 func init() {
-	artifact, _ := framework.ReadArtifact("ofa.sol/OFA.json")
+	artifact, _ := framework.ReadArtifact("ofa-private.sol/OFAPrivate.json")
 	hintEventABI = artifact.Abi.Events["HintEvent"]
 }
 

@@ -3,7 +3,7 @@ pragma solidity ^0.8.8;
 
 import "../../suave-geth/suave/sol/libraries/Suave.sol";
 
-contract OFA {
+contract OFAPrivate {
     address[] public addressList = [0xC8df3686b4Afb2BB53e60EAe97EF043FE03Fb829];
 
     // Struct to hold hint-related information for an order.
