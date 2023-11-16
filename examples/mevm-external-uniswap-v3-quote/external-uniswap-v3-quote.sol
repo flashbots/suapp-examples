@@ -30,7 +30,24 @@ library UniswapV3 {
 }
 
 contract ExternalUniswapV3Quote {
-    function example(UniswapV3.ExactOutputSingleParams memory params) external payable {
+    address public constant DAI = 0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844;
+    address public constant WETH9 = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
+
+    function callback() external payable {}
+
+    function example() external payable returns (bytes memory) {
+        UniswapV3.ExactOutputSingleParams memory params = UniswapV3.ExactOutputSingleParams({
+            tokenIn: DAI,
+            tokenOut: WETH9,
+            fee: 100,
+            recipient: address(this),
+            deadline: 100,
+            amountOut: 100,
+            amountInMaximum: 1,
+            sqrtPriceLimitX96: 0
+        });
         UniswapV3.exactOutputSingle(params);
+
+        return abi.encodeWithSelector(this.callback.selector);
     }
 }
