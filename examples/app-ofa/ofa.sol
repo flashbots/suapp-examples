@@ -6,6 +6,7 @@ import "../../suave-geth/suave/sol/libraries/Suave.sol";
 contract OFA {
     address[] public addressList = [0xC8df3686b4Afb2BB53e60EAe97EF043FE03Fb829];
 
+    // Struct to hold hint-related information for an order.
     struct HintOrder {
         Suave.BidId id;
         bytes hint;
@@ -16,15 +17,16 @@ contract OFA {
         bytes hint
     );
 
+    // Internal function to save order details and generate a hint.
     function saveOrder() internal view returns (HintOrder memory) {
         // Retrieve the bundle data from the confidential inputs
         bytes memory bundleData = Suave.confidentialInputs();
 
-        // Simulate the bundle and extract its score
+        // Simulate the bundle and extract its score.
         uint64 egp = Suave.simulateBundle(bundleData);
 
         // Extract a hint about this bundle that is going to be leaked
-        // to external applications
+        // to external applications.
         bytes memory hint = Suave.extractHint(bundleData);
 
         // Store the bundle and the simulation results in the confidential datastore.
@@ -43,15 +45,18 @@ contract OFA {
         emit HintEvent(order.id, order.hint);
     }
 
+    // Function to create a new user order
     function newOrder() external payable returns (bytes memory) {
         HintOrder memory hintOrder = saveOrder();
         return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
     }
 
+    // Function to match and backrun another bid.
     function newMatch(Suave.BidId shareBidId) external payable returns (bytes memory) {
         HintOrder memory hintOrder = saveOrder();
 
-        // Merge the bids
+        // Merge the bids and store them in the confidential datastore.
+        // The 'fillMevShareBundle' precompile will use this information to send the bundles.
         Suave.BidId[] memory bids = new Suave.BidId[](2);
         bids[0] = shareBidId;
         bids[1] = hintOrder.id;

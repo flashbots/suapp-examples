@@ -60,15 +60,6 @@ func ReadArtifact(path string) (*Artifact, error) {
 	return art, nil
 }
 
-var (
-	ExNodeEthAddr = common.HexToAddress("b5feafbdd752ad52afb7e1bd2e40432a485bbb7f")
-	ExNodeNetAddr = "http://localhost:8545"
-
-	// This account is funded in both devnev networks
-	// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
-	FundedAccount = NewPrivKeyFromHex("91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12")
-)
-
 type PrivKey struct {
 	Priv *ecdsa.PrivateKey
 }
@@ -97,71 +88,102 @@ func GeneratePrivKey() *PrivKey {
 	return &PrivKey{Priv: key}
 }
 
-func DeployContract(path string) (*sdk.Contract, error) {
-	rpc, _ := rpc.Dial(ExNodeNetAddr)
-	mevmClt := sdk.NewClient(rpc, FundedAccount.Priv, ExNodeEthAddr)
+type Contract struct {
+	*sdk.Contract
+}
 
+func (c *Contract) SendTransaction(method string, args []interface{}, confidentialBytes []byte) *types.Receipt {
+	txnResult, err := c.Contract.SendTransaction(method, args, confidentialBytes)
+	if err != nil {
+		panic(err)
+	}
+	receipt, err := txnResult.Wait()
+	if err != nil {
+		panic(err)
+	}
+	if receipt.Status == 0 {
+		panic("bad")
+	}
+	return receipt
+}
+
+type Framework struct {
+	config *Config
+	rpc    *rpc.Client
+	clt    *sdk.Client
+}
+
+type Config struct {
+	KettleRPC     string
+	KettleAddr    common.Address
+	FundedAccount *PrivKey
+}
+
+func DefaultConfig() *Config {
+	return &Config{
+		KettleRPC:  "http://localhost:8545",
+		KettleAddr: common.HexToAddress("b5feafbdd752ad52afb7e1bd2e40432a485bbb7f"),
+
+		// This account is funded in both devnev networks
+		// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
+		FundedAccount: NewPrivKeyFromHex("91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"),
+	}
+}
+
+func NewFr() *Framework {
+	config := DefaultConfig()
+
+	rpc, _ := rpc.Dial(config.KettleRPC)
+	clt := sdk.NewClient(rpc, config.FundedAccount.Priv, config.KettleAddr)
+
+	return &Framework{
+		config: DefaultConfig(),
+		rpc:    rpc,
+		clt:    clt,
+	}
+}
+
+func (f *Framework) DeployContract(path string) *Contract {
 	artifact, err := ReadArtifact(path)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	// deploy contract
-	txnResult, err := sdk.DeployContract(artifact.Code, mevmClt)
+	txnResult, err := sdk.DeployContract(artifact.Code, f.clt)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	receipt, err := ensureTransactionSuccess(txnResult)
+	receipt, err := txnResult.Wait()
 	if err != nil {
-		return nil, err
-	}
-
-	contract := sdk.GetContract(receipt.ContractAddress, artifact.Abi, mevmClt)
-	return contract, nil
-}
-
-func ensureTransactionSuccess(txn *sdk.TransactionResult) (*types.Receipt, error) {
-	receipt, err := txn.Wait()
-	if err != nil {
-		return nil, err
+		panic(err)
 	}
 	if receipt.Status == 0 {
+		panic(fmt.Errorf("transaction failed"))
+	}
+
+	contract := sdk.GetContract(receipt.ContractAddress, artifact.Abi, f.clt)
+	return &Contract{Contract: contract}
+}
+
+func (f *Framework) SignTx(priv *PrivKey, tx *types.LegacyTx) (*types.Transaction, error) {
+	rpc, _ := rpc.Dial("http://localhost:8545")
+
+	cltAcct1 := sdk.NewClient(rpc, priv.Priv, common.Address{})
+	signedTxn, err := cltAcct1.SignTxn(tx)
+	if err != nil {
 		return nil, err
 	}
-	return receipt, nil
+	return signedTxn, nil
 }
 
-// DeployAndTransact is a helper function that deploys a suapp
-// and inmediately executes a function on it with a confidential request.
-func DeployAndTransact(path, funcName string) {
-	contract, err := DeployContract(path)
-	if err != nil {
-		fmt.Printf("failed to deploy contract: %v", err)
-		os.Exit(1)
-	}
-
-	txnResult, err := contract.SendTransaction(funcName, []interface{}{}, []byte{})
-	if err != nil {
-		fmt.Printf("failed to send transaction: %v", err)
-		os.Exit(1)
-	}
-
-	if _, err = ensureTransactionSuccess(txnResult); err != nil {
-		fmt.Printf("failed to ensure transaction success: %v", err)
-		os.Exit(1)
-	}
-}
-
-func FundAccount(to common.Address, value *big.Int) error {
-	rpc, _ := rpc.Dial(ExNodeNetAddr)
-	clt := sdk.NewClient(rpc, FundedAccount.Priv, ExNodeEthAddr)
-
+func (f *Framework) FundAccount(to common.Address, value *big.Int) error {
 	txn := &types.LegacyTx{
 		Value: value,
 		To:    &to,
 	}
-	result, err := clt.SendTransaction(txn)
+	result, err := f.clt.SendTransaction(txn)
 	if err != nil {
 		return err
 	}
@@ -170,7 +192,7 @@ func FundAccount(to common.Address, value *big.Int) error {
 		return err
 	}
 	// check balance
-	balance, err := clt.RPC().BalanceAt(context.Background(), to, nil)
+	balance, err := f.clt.RPC().BalanceAt(context.Background(), to, nil)
 	if err != nil {
 		return err
 	}

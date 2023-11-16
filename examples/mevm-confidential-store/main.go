@@ -5,5 +5,7 @@ import (
 )
 
 func main() {
-	framework.DeployAndTransact("confidential-store.sol/ConfidentialStore.json", "example")
+	fr := framework.NewFr()
+	fr.DeployContract("confidential-store.sol/ConfidentialStore.json").
+		SendTransaction("example", nil, nil)
 }

@@ -8,59 +8,46 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/suave/sdk"
 	"github.com/flashbots/suapp-examples/framework"
 )
-
-var artifact *framework.Artifact
 
 func main() {
 	fakeRelayer := httptest.NewServer(&relayHandlerExample{})
 	defer fakeRelayer.Close()
 
-	contract, err := framework.DeployContract("ofa.sol/OFA.json")
-	if err != nil {
-		panic(err)
-	}
+	fr := framework.NewFr()
+	contract := fr.DeployContract("ofa.sol/OFA.json")
 
-	artifact, _ = framework.ReadArtifact("ofa.sol/OFA.json")
-
-	rpc, _ := rpc.Dial("http://localhost:8545")
+	// Step 1. Create and fund the accounts we are going to frontrun/backrun
+	fmt.Println("1. Create and fund test accounts")
 
 	testAddr1 := framework.GeneratePrivKey()
 	testAddr2 := framework.GeneratePrivKey()
 
-	// we use the sdk.Client for the Sign function though we only
-	// want to sign simple ethereum transactions and not compute requests
-	cltAcct1 := sdk.NewClient(rpc, testAddr1.Priv, common.Address{})
-	cltAcct2 := sdk.NewClient(rpc, testAddr2.Priv, common.Address{})
+	fundBalance := big.NewInt(100000000)
+	fr.FundAccount(testAddr1.Address(), fundBalance)
 
 	targeAddr := testAddr1.Address()
 
-	ethTxn1, err := cltAcct1.SignTxn(&types.LegacyTx{
+	ethTxn1, _ := fr.SignTx(testAddr1, &types.LegacyTx{
 		To:       &targeAddr,
 		Value:    big.NewInt(1000),
 		Gas:      21000,
 		GasPrice: big.NewInt(13),
 	})
-	if err != nil {
-		panic(err)
-	}
 
-	ethTxnBackrun, err := cltAcct2.SignTxn(&types.LegacyTx{
+	ethTxnBackrun, _ := fr.SignTx(testAddr2, &types.LegacyTx{
 		To:       &targeAddr,
 		Value:    big.NewInt(1000),
 		Gas:      21420,
 		GasPrice: big.NewInt(13),
 	})
-	if err != nil {
-		panic(err)
-	}
 
-	/* SEND BID */
+	// Step 2. Send the initial transaction
+	fmt.Println("2. Send bid")
 
 	refundPercent := 10
 	bundle := &types.SBundle{
@@ -71,28 +58,17 @@ func main() {
 	bundleBytes, _ := json.Marshal(bundle)
 
 	// new bid inputs
-	txnResult, err := contract.SendTransaction("newOrder", []interface{}{}, bundleBytes)
-	if err != nil {
-		panic(err)
-	}
-	receipt, err := txnResult.Wait()
-	if err != nil {
-		panic(err)
-	}
-	if receipt.Status == 0 {
-		panic("bad")
-	}
-
-	fmt.Println(receipt.Logs)
+	receipt := contract.SendTransaction("newOrder", []interface{}{}, bundleBytes)
 
 	hintEvent := &HintEvent{}
 	if err := hintEvent.Unpack(receipt.Logs[0]); err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Hint event", hintEvent)
+	fmt.Println("Hint event id", hintEvent.BidId)
 
-	/* SEND BACKRUN */
+	// Step 3. Send the backrun transaction
+	fmt.Println("3. Send backrun")
 
 	backRunBundle := &types.SBundle{
 		Txs:             types.Transactions{ethTxnBackrun},
@@ -101,38 +77,26 @@ func main() {
 	backRunBundleBytes, _ := json.Marshal(backRunBundle)
 
 	// backrun inputs
-	txnResult, err = contract.SendTransaction("newMatch", []interface{}{hintEvent.BidId}, backRunBundleBytes)
-	if err != nil {
-		panic(err)
-	}
-	receipt, err = txnResult.Wait()
-	if err != nil {
-		panic(err)
-	}
-	if receipt.Status == 0 {
-		panic("bad")
-	}
+	receipt = contract.SendTransaction("newMatch", []interface{}{hintEvent.BidId}, backRunBundleBytes)
 
 	matchEvent := &HintEvent{}
 	if err := matchEvent.Unpack(receipt.Logs[0]); err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Match event", matchEvent)
+	fmt.Println("Match event id", matchEvent.BidId)
 
-	// Send the request to the relay
-	// backrun inputs
-	txnResult, err = contract.SendTransaction("emitMatchBidAndHint", []interface{}{fakeRelayer.URL, matchEvent.BidId}, backRunBundleBytes)
-	if err != nil {
-		panic(err)
-	}
-	receipt, err = txnResult.Wait()
-	if err != nil {
-		panic(err)
-	}
-	if receipt.Status == 0 {
-		panic("bad")
-	}
+	// Step 4. Emit the batch to the relayer
+	fmt.Println("Step 4. Emit batch")
+
+	contract.SendTransaction("emitMatchBidAndHint", []interface{}{fakeRelayer.URL, matchEvent.BidId}, backRunBundleBytes)
+}
+
+var hintEventABI abi.Event
+
+func init() {
+	artifact, _ := framework.ReadArtifact("ofa.sol/OFA.json")
+	hintEventABI = artifact.Abi.Events["HintEvent"]
 }
 
 type HintEvent struct {
@@ -141,29 +105,12 @@ type HintEvent struct {
 }
 
 func (h *HintEvent) Unpack(log *types.Log) error {
-	unpacked, err := artifact.Abi.Events["HintEvent"].Inputs.Unpack(log.Data)
+	unpacked, err := hintEventABI.Inputs.Unpack(log.Data)
 	if err != nil {
 		return err
 	}
 	h.BidId = unpacked[0].([16]byte)
 	h.Hint = unpacked[1].([]byte)
-	return nil
-}
-
-type BidEvent struct {
-	BidId               [16]byte
-	DecryptionCondition uint64
-	AllowedPeekers      []common.Address
-}
-
-func (b *BidEvent) Unpack(log *types.Log) error {
-	unpacked, err := artifact.Abi.Events["BidEvent"].Inputs.Unpack(log.Data)
-	if err != nil {
-		return err
-	}
-	b.BidId = unpacked[0].([16]byte)
-	b.DecryptionCondition = unpacked[1].(uint64)
-	b.AllowedPeekers = unpacked[2].([]common.Address)
 	return nil
 }
 
