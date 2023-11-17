@@ -5,5 +5,7 @@ import (
 )
 
 func main() {
-	framework.DeployAndTransact("onchain-callback.sol/OnChainCallback.json", "example")
+	fr := framework.New()
+	fr.DeployContract("onchain-callback.sol/OnChainCallback.json").
+		SendTransaction("example", nil, nil)
 }
