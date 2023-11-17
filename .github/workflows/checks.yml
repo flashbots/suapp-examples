@@ -58,11 +58,11 @@ jobs:
       - name: Build suave
         run: |
           cd suave-geth
-          make suave
+          make geth
       
       - name: Run suave
         run: |
-          ./suave-geth/build/bin/suave --suave.dev &
+          ./suave-geth/build/bin/geth --suave.dev &
       
       - name: Run tests
         run: |
