@@ -18,7 +18,7 @@ func main() {
 	fakeRelayer := httptest.NewServer(&relayHandlerExample{})
 	defer fakeRelayer.Close()
 
-	fr := framework.NewFr()
+	fr := framework.New()
 	contract := fr.DeployContract("ofa-private.sol/OFAPrivate.json")
 
 	// Step 1. Create and fund the accounts we are going to frontrun/backrun
