@@ -11,7 +11,7 @@ func main() {
 	fr := framework.New()
 	contract := fr.DeployContract("onchain-state.sol/OnChainState.json")
 
-	fmt.Printf("1. Send a confidential request that cannot modify the state")
+	fmt.Println("1. Send a confidential request that cannot modify the state")
 
 	contract.SendTransaction("nilExample", nil, nil)
 	val := contract.Call("getState")[0].(uint64)
@@ -20,7 +20,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("2. Send a confidential request that modifies the state")
+	fmt.Println("2. Send a confidential request that modifies the state")
 
 	contract.SendTransaction("example", nil, nil)
 	val = contract.Call("getState")[0].(uint64)
