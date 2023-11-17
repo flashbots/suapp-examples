@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	fr := framework.NewFr()
+	fr := framework.New()
 	fr.DeployContract("is-confidential.sol/IsConfidential.json").
 		SendTransaction("example", nil, nil)
 }

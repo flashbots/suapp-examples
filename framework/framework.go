@@ -130,7 +130,7 @@ func DefaultConfig() *Config {
 	}
 }
 
-func NewFr() *Framework {
+func New() *Framework {
 	config := DefaultConfig()
 
 	rpc, _ := rpc.Dial(config.KettleRPC)
@@ -178,6 +178,8 @@ func (f *Framework) SignTx(priv *PrivKey, tx *types.LegacyTx) (*types.Transactio
 	return signedTxn, nil
 }
 
+var errFundAccount = fmt.Errorf("failed to fund account")
+
 func (f *Framework) FundAccount(to common.Address, value *big.Int) error {
 	txn := &types.LegacyTx{
 		Value: value,
@@ -197,7 +199,7 @@ func (f *Framework) FundAccount(to common.Address, value *big.Int) error {
 		return err
 	}
 	if balance.Cmp(value) != 0 {
-		return fmt.Errorf("failed to fund account")
+		return errFundAccount
 	}
 	return nil
 }
