@@ -90,6 +90,10 @@ func GeneratePrivKey() *PrivKey {
 
 type Contract struct {
 	*sdk.Contract
+
+	addr common.Address
+	abi  *abi.ABI
+	fr   *Framework
 }
 
 func (c *Contract) SendTransaction(method string, args []interface{}, confidentialBytes []byte) *types.Receipt {
@@ -164,7 +168,23 @@ func (f *Framework) DeployContract(path string) *Contract {
 	}
 
 	contract := sdk.GetContract(receipt.ContractAddress, artifact.Abi, f.clt)
-	return &Contract{Contract: contract}
+	return &Contract{addr: receipt.ContractAddress, fr: f, abi: artifact.Abi, Contract: contract}
+}
+
+func (c *Contract) Ref(acct *PrivKey) *Contract {
+	cc := &Contract{
+		addr:     c.addr,
+		abi:      c.abi,
+		fr:       c.fr,
+		Contract: sdk.GetContract(c.addr, c.abi, c.fr.NewClient(acct)),
+	}
+	return cc
+}
+
+func (f *Framework) NewClient(acct *PrivKey) *sdk.Client {
+	cc := DefaultConfig()
+	rpc, _ := rpc.Dial(cc.KettleRPC)
+	return sdk.NewClient(rpc, acct.Priv, cc.KettleAddr)
 }
 
 func (f *Framework) SignTx(priv *PrivKey, tx *types.LegacyTx) (*types.Transaction, error) {
