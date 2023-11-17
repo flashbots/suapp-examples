@@ -27,8 +27,9 @@ func main() {
 	testAddr1 := framework.GeneratePrivKey()
 	testAddr2 := framework.GeneratePrivKey()
 
-	fundBalance := big.NewInt(100000000)
+	fundBalance := big.NewInt(100000000000000000)
 	fr.FundAccount(testAddr1.Address(), fundBalance)
+	fr.FundAccount(testAddr2.Address(), fundBalance)
 
 	targeAddr := testAddr1.Address()
 
@@ -58,7 +59,8 @@ func main() {
 	bundleBytes, _ := json.Marshal(bundle)
 
 	// new bid inputs
-	receipt := contract.SendTransaction("newOrder", []interface{}{}, bundleBytes)
+	contractAddr1 := contract.Ref(testAddr1)
+	receipt := contractAddr1.SendTransaction("newOrder", []interface{}{}, bundleBytes)
 
 	hintEvent := &HintEvent{}
 	if err := hintEvent.Unpack(receipt.Logs[0]); err != nil {
@@ -77,7 +79,8 @@ func main() {
 	backRunBundleBytes, _ := json.Marshal(backRunBundle)
 
 	// backrun inputs
-	receipt = contract.SendTransaction("newMatch", []interface{}{hintEvent.BidId}, backRunBundleBytes)
+	contractAddr2 := contract.Ref(testAddr2)
+	receipt = contractAddr2.SendTransaction("newMatch", []interface{}{hintEvent.BidId}, backRunBundleBytes)
 
 	matchEvent := &HintEvent{}
 	if err := matchEvent.Unpack(receipt.Logs[0]); err != nil {
