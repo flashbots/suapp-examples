@@ -1,7 +1,7 @@
 
 # Example Suapp for an OFA application with private transactions
 
-This example features an [Order-flow-auction](https://collective.flashbots.net/t/order-flow-auctions-and-centralisation-ii-order-flow-auctions/284) application based on the [mev-share](https://github.com/flashbots/mev-share) protocol specification.
+This example features an [Order flow auction](https://collective.flashbots.net/t/order-flow-auctions-and-centralisation-ii-order-flow-auctions/284) Suapp based on the [mev-share](https://github.com/flashbots/mev-share) protocol specification.
 
 User transactions are stored in the confidential datastore and only a small hint it is leaked outside the Kettle. Then, searchers bid in an order-flow auction for the right to execute against users’ private transactions.
 
