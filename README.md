@@ -3,6 +3,7 @@
 See also:
 
 - **https://github.com/flashbots/suave-geth**
+- https://collective.flashbots.net/c/suave/27
 
 Writings:
 
