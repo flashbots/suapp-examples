@@ -6,7 +6,10 @@ import "../../suave-geth/suave/sol/libraries/Suave.sol";
 contract ConfidentialStore {
     function callback() external payable {}
 
-    function example(address[] memory allowedList) external payable returns (bytes memory) {
+    function example() external payable returns (bytes memory) {
+        address[] memory allowedList = new address[](1);
+        allowedList[0] = address(this);
+
         Suave.Bid memory bid = Suave.newBid(
             10,
             allowedList,
