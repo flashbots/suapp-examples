@@ -64,6 +64,12 @@ jobs:
         run: |
           ./suave-geth/build/bin/geth --suave.dev &
       
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build the contracts
+        run: forge build
+
       - name: Run tests
         run: |
           go run ./examples/app-ofa-private/main.go
