@@ -6,6 +6,5 @@ import (
 
 func main() {
 	fr := framework.New()
-	contract := fr.DeployContract("confidential-store.sol/ConfidentialStore.json")
-	contract.SendTransaction("example", []interface{}{}, nil)
+	fr.DeployContract("confidential-store.sol/ConfidentialStore.json").SendTransaction("example", []interface{}{}, nil)
 }
