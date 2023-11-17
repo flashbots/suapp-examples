@@ -59,14 +59,14 @@ $ cd suave-geth
 $ make suave
 ```
 
-Now you should have the suave binary in your Go bin directory. You can check this by running:
+Now you have the `suave`` binary in your Go bin directory. You can check this by running:
 
 ```bash
 $ which suave
 $ suave --version
 ```
 
-Now you can start the local devnet like this:
+Start the local devnet like this:
 
 ```bash
 $ suave --suave.dev
@@ -83,6 +83,9 @@ $ make devnet-up
 
 # check that the containers are running
 $ docker ps
+
+# you can stop the local devnet like this
+$ make devnet-down
 ```
 
 ### Testing the devnet
