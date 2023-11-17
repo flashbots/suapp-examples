@@ -48,6 +48,9 @@ $ forge build
 ## Start the local devnet
 
 ```bash
+# change into the suave-geth directory
+$ cd suave-geth
+
 # spin up the local devnet with docker-compose
 $ make devnet-up
 
