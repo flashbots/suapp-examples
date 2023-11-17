@@ -72,4 +72,4 @@ jobs:
 
       - name: Run tests
         run: |
-          go run ./examples/app-ofa-private/main.go
+          make run-integration
