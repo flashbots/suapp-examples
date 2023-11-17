@@ -47,6 +47,33 @@ $ forge build
 
 ## Start the local devnet
 
+There's two ways to start the local devnet: with Docker or directly using the suave-geth binary.
+
+### Building from source
+
+```bash
+# change into the suave-geth directory
+$ cd suave-geth
+
+# build the binary
+$ make suave
+```
+
+Now you should have the suave binary in your Go bin directory. You can check this by running:
+
+```bash
+$ which suave
+$ suave --version
+```
+
+Now you can start the local devnet like this:
+
+```bash
+$ suave --suave.dev
+```
+
+### Docker
+
 ```bash
 # change into the suave-geth directory
 $ cd suave-geth
@@ -54,10 +81,21 @@ $ cd suave-geth
 # spin up the local devnet with docker-compose
 $ make devnet-up
 
-# create a few example transactions
-$ go run suave/devenv/cmd/main.go
+# check that the containers are running
+$ docker ps
+```
 
-# execute a RPC request with curl
+### Testing the devnet
+
+Create a few example transactions:
+
+```bash
+$ go run suave/devenv/cmd/main.go
+```
+
+Execute a RPC request with curl like this:
+
+```bash
 $ curl 'http://localhost:8545' --header 'Content-Type: application/json' --data '{ "jsonrpc":"2.0", "method":"eth_blockNumber", "params":[], "id":83 }'
 ```
 
