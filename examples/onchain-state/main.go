@@ -24,7 +24,7 @@ func main() {
 
 	contract.SendTransaction("example", nil, nil)
 	val = contract.Call("getState")[0].(uint64)
-	if val != 0 {
+	if val != 1 {
 		fmt.Printf("expected 1")
 		os.Exit(1)
 	}
