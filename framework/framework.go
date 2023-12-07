@@ -121,6 +121,10 @@ func (c *Contract) Call(methodName string) []interface{} {
 	return results
 }
 
+func (c *Contract) Raw() *sdk.Contract {
+	return c.Contract
+}
+
 func (c *Contract) SendTransaction(method string, args []interface{}, confidentialBytes []byte) *types.Receipt {
 	txnResult, err := c.Contract.SendTransaction(method, args, confidentialBytes)
 	if err != nil {
