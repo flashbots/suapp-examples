@@ -131,7 +131,7 @@ func (c *Contract) SendTransaction(method string, args []interface{}, confidenti
 		panic(err)
 	}
 	if receipt.Status == 0 {
-		panic("bad")
+		panic(fmt.Errorf("status not correct"))
 	}
 	return receipt
 }
