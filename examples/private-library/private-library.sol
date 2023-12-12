@@ -11,7 +11,7 @@ contract PublicSuapp {
         bytes memory bytecode = Suave.confidentialInputs();
         address addr = deploy(bytecode);
 
-        PrivateContractI c = PrivateContractI(addr);
+        PrivateLibraryI c = PrivateLibraryI(addr);
         uint256 result = c.add(1, 2);
         require(result == 3);
 
@@ -31,11 +31,11 @@ contract PublicSuapp {
     }
 }
 
-interface PrivateContractI {
+interface PrivateLibraryI {
     function add(uint256 a, uint256 b) external pure returns (uint256);
 }
 
-contract PrivateContract {
+contract PrivateLibrary {
     function add(uint256 a, uint256 b) public pure returns (uint256) {
         return a+b;
     }
