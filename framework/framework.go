@@ -125,6 +125,7 @@ func (c *Contract) Raw() *sdk.Contract {
 	return c.Contract
 }
 
+// SendTransaction sends the transaction and panics if it fails
 func (c *Contract) SendTransaction(method string, args []interface{}, confidentialBytes []byte) *types.Receipt {
 	txnResult, err := c.Contract.SendTransaction(method, args, confidentialBytes)
 	if err != nil {
@@ -135,7 +136,7 @@ func (c *Contract) SendTransaction(method string, args []interface{}, confidenti
 		panic(err)
 	}
 	if receipt.Status == 0 {
-		panic("bad")
+		panic(fmt.Errorf("status not correct"))
 	}
 	return receipt
 }
