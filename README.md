@@ -33,7 +33,7 @@ $ git submodule update
 
 Install [Foundry](https://getfoundry.sh/):
 
-```
+```bash
 $ curl -L https://foundry.paradigm.xyz | bash
 ```
 
@@ -54,6 +54,20 @@ See the instructions here: https://github.com/flashbots/suave-geth#starting-a-lo
 ## Run the examples
 
 Check out the [`/examples/`](/examples/) folder for several example Suapps and `main.go` files to deploy and run them!
+
+## Contributing
+
+Some notes and helpers for contributing to this repository:
+
+```bash
+# Install testing dependencies
+$ go install mvdan.cc/gofumpt@v0.4.0
+$ go install honnef.co/go/tools/cmd/staticcheck@v0.4.5
+$ go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.0
+
+# Update the git submodules to the latest commit
+$ git submodule update --remote
+```
 
 ---
 
