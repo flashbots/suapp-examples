@@ -5,3 +5,6 @@
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
 	branch = v1.7.1
+[submodule "lib/suave-std"]
+	path = lib/suave-std
+	url = https://github.com/flashbots/suave-std
