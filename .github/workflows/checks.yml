@@ -35,6 +35,9 @@ jobs:
       - name: Lint
         run: make lint
 
+      - name: Lint contracts
+        run: forge fmt --check
+
       - name: Ensure go mod tidy runs without changes
         run: |
           go mod tidy
