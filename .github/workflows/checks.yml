@@ -35,6 +35,9 @@ jobs:
       - name: Lint
         run: make lint
 
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
       - name: Lint contracts
         run: forge fmt --check
 
