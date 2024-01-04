@@ -4,8 +4,6 @@ pragma solidity ^0.8.8;
 import "suave-std/suavelib/Suave.sol";
 
 contract OFAPrivate {
-    address[] public addressList = [0xC8df3686b4Afb2BB53e60EAe97EF043FE03Fb829];
-
     // Struct to hold hint-related information for an order.
     struct HintOrder {
         Suave.DataId id;
@@ -26,11 +24,15 @@ contract OFAPrivate {
         // to external applications.
         bytes memory hint = Suave.extractHint(bundleData);
 
+        address[] memory allowedList = new address[](2);
+        allowedList[0] = address(this);
+        allowedList[1] = 0x0000000000000000000000000000000043200001;
+
         // Store the bundle and the simulation results in the confidential datastore.
         Suave.DataRecord memory bid = Suave.newDataRecord(
             10,
-            addressList,
-            addressList,
+            allowedList,
+            allowedList,
             ""
         );
         Suave.confidentialStore(bid.id, "mevshare:v0:ethBundles", bundleData);
@@ -70,7 +72,7 @@ contract OFAPrivate {
         bids[1] = hintOrder.id;
         Suave.confidentialStore(
             hintOrder.id,
-            "mevshare:v0:mergedBids",
+            "mevshare:v0:mergedDataRecords",
             abi.encode(bids)
         );
 

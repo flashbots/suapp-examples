@@ -71,7 +71,7 @@ jobs:
 
       - name: Run suave
         run: |
-          ./suave-geth/build/bin/geth --suave.dev &
+          ./suave-geth/build/bin/geth --suave.dev --suave.eth.external-whitelist localhost:1234 &
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1

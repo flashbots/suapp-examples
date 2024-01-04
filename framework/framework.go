@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -18,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/suave/artifacts"
 	"github.com/ethereum/go-ethereum/suave/sdk"
 )
 
@@ -125,10 +127,24 @@ func (c *Contract) Raw() *sdk.Contract {
 	return c.Contract
 }
 
+var executionRevertedPrefix = "execution reverted: 0x"
+
 // SendTransaction sends the transaction and panics if it fails
 func (c *Contract) SendTransaction(method string, args []interface{}, confidentialBytes []byte) *types.Receipt {
 	txnResult, err := c.Contract.SendTransaction(method, args, confidentialBytes)
 	if err != nil {
+		// decode the PeekerReverted error
+		errMsg := err.Error()
+		if strings.HasPrefix(errMsg, executionRevertedPrefix) {
+			errMsg = errMsg[len(executionRevertedPrefix):]
+			errMsgBytes, _ := hex.DecodeString(errMsg)
+
+			unpacked, _ := artifacts.SuaveAbi.Errors["PeekerReverted"].Inputs.Unpack(errMsgBytes[4:])
+
+			addr, _ := unpacked[0].(common.Address)
+			eventErr, _ := unpacked[1].([]byte)
+			panic(fmt.Sprintf("peeker 0x%x reverted: %s", addr, eventErr))
+		}
 		panic(err)
 	}
 	receipt, err := txnResult.Wait()
