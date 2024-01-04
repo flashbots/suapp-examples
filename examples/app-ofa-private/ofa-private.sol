@@ -29,18 +29,9 @@ contract OFAPrivate {
         allowedList[1] = 0x0000000000000000000000000000000043200001;
 
         // Store the bundle and the simulation results in the confidential datastore.
-        Suave.DataRecord memory bid = Suave.newDataRecord(
-            10,
-            allowedList,
-            allowedList,
-            ""
-        );
+        Suave.DataRecord memory bid = Suave.newDataRecord(10, allowedList, allowedList, "");
         Suave.confidentialStore(bid.id, "mevshare:v0:ethBundles", bundleData);
-        Suave.confidentialStore(
-            bid.id,
-            "mevshare:v0:ethBundleSimResults",
-            abi.encode(egp)
-        );
+        Suave.confidentialStore(bid.id, "mevshare:v0:ethBundleSimResults", abi.encode(egp));
 
         HintOrder memory hintOrder;
         hintOrder.id = bid.id;
@@ -60,9 +51,7 @@ contract OFAPrivate {
     }
 
     // Function to match and backrun another bid.
-    function newMatch(
-        Suave.DataId shareBidId
-    ) external payable returns (bytes memory) {
+    function newMatch(Suave.DataId shareBidId) external payable returns (bytes memory) {
         HintOrder memory hintOrder = saveOrder();
 
         // Merge the bids and store them in the confidential datastore.
@@ -70,25 +59,21 @@ contract OFAPrivate {
         Suave.DataId[] memory bids = new Suave.DataId[](2);
         bids[0] = shareBidId;
         bids[1] = hintOrder.id;
-        Suave.confidentialStore(
-            hintOrder.id,
-            "mevshare:v0:mergedDataRecords",
-            abi.encode(bids)
-        );
+        Suave.confidentialStore(hintOrder.id, "mevshare:v0:mergedDataRecords", abi.encode(bids));
 
         return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
     }
 
     function emitMatchBidAndHintCallback() external payable {}
 
-    function emitMatchBidAndHint(
-        string memory builderUrl,
-        Suave.DataId bidId
-    ) external payable returns (bytes memory) {
+    function emitMatchBidAndHint(string memory builderUrl, Suave.DataId bidId)
+        external
+        payable
+        returns (bytes memory)
+    {
         bytes memory bundleData = Suave.fillMevShareBundle(bidId);
         Suave.submitBundleJsonRPC(builderUrl, "mev_sendBundle", bundleData);
 
-        return
-            abi.encodeWithSelector(this.emitMatchBidAndHintCallback.selector);
+        return abi.encodeWithSelector(this.emitMatchBidAndHintCallback.selector);
     }
 }
