@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"net/http"
-	"net/http/httptest"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -15,8 +15,10 @@ import (
 )
 
 func main() {
-	fakeRelayer := httptest.NewServer(&relayHandlerExample{})
-	defer fakeRelayer.Close()
+	relayerURL := "localhost:1234"
+	go func() {
+		log.Fatal(http.ListenAndServe(relayerURL, &relayHandlerExample{}))
+	}()
 
 	fr := framework.New()
 	contract := fr.DeployContract("ofa-private.sol/OFAPrivate.json")
@@ -90,9 +92,9 @@ func main() {
 	fmt.Println("Match event id", matchEvent.BidId)
 
 	// Step 4. Emit the batch to the relayer
-	fmt.Println("Step 4. Emit batch")
+	fmt.Println("4. Emit batch")
 
-	contract.SendTransaction("emitMatchBidAndHint", []interface{}{fakeRelayer.URL, matchEvent.BidId}, backRunBundleBytes)
+	contract.SendTransaction("emitMatchBidAndHint", []interface{}{"http://" + relayerURL, matchEvent.BidId}, backRunBundleBytes)
 }
 
 var hintEventABI abi.Event

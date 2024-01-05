@@ -35,11 +35,18 @@ jobs:
       - name: Lint
         run: make lint
 
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Lint contracts
+        run: forge fmt --check
+
       - name: Ensure go mod tidy runs without changes
         run: |
           go mod tidy
           git update-index -q --really-refresh
           git diff-index HEAD
+
   integration-tests:
     name: Integration tests
     runs-on: ubuntu-latest
@@ -53,17 +60,25 @@ jobs:
       - name: Check out code into the Go module directory and submodules
         uses: actions/checkout@v2
         with:
-          submodules: 'true'
-      
+          submodules: "true"
+
+      - name: Checkout suave-geth repo
+        uses: actions/checkout@v4
+        with:
+          repository: flashbots/suave-geth
+          path: suave-geth
+          persist-credentials: false
+          fetch-depth: 0
+
       - name: Build suave
         run: |
           cd suave-geth
           make geth
-      
+
       - name: Run suave
         run: |
-          ./suave-geth/build/bin/geth --suave.dev &
-      
+          ./suave-geth/build/bin/geth --suave.dev --suave.eth.external-whitelist localhost:1234 &
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 

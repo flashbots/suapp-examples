@@ -14,7 +14,7 @@ func main() {
 	fmt.Println("1. A confidential request fails if it tries to modify the state")
 
 	_, err := contract.Raw().SendTransaction("nilExample", nil, nil)
-	if err != nil {
+	if err == nil {
 		fmt.Println("expected an error")
 		os.Exit(1)
 	}

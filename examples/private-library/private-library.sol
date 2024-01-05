@@ -1,11 +1,9 @@
 pragma solidity ^0.8.8;
 
-import "../../suave-geth/suave/sol/libraries/Suave.sol";
+import "suave-std/suavelib/Suave.sol";
 
 contract PublicSuapp {
-    function callback() public payable {
-
-    }
+    function callback() public payable {}
 
     function example() public payable returns (bytes memory) {
         bytes memory bytecode = Suave.confidentialInputs();
@@ -37,6 +35,6 @@ interface PrivateLibraryI {
 
 contract PrivateLibrary {
     function add(uint256 a, uint256 b) public pure returns (uint256) {
-        return a+b;
+        return a + b;
     }
 }
