@@ -2,76 +2,87 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
 	"math/big"
 	"net/http"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/flashbots/suapp-examples/framework"
 	"golang.org/x/crypto/sha3"
 )
 
 const MINT_TYPEHASH = "0x686aa0ee2a8dd75ace6f66b3a5e79d3dfd8e25e05a5e494bb85e72214ab37880"
 const DOMAIN_SEPARATOR = "0x617661b7ab13ce21150e0a39abe5834762b356e3c643f10c28a3c9331025604a"
-const NAME_HASH = keccak256([]byte("SUAVE_NFT"))
-const SYMBOL_HASH = keccak256([]byte("NFTEE"))
 
 func main() {
+
 	relayerURL := "localhost:1234"
 	go func() {
 		log.Fatal(http.ListenAndServe(relayerURL, &relayHandlerExample{}))
 	}()
 
 	fr := framework.New()
-	contract := fr.DeployContract("path/to/Emitter.json")
+	contract := fr.DeployContract("712Emitter.sol/Emitter.json")
 
-	testAddr := framework.GeneratePrivKey()
+	privKey := framework.GeneratePrivKey()
+	testAddr := privKey.Address()
 	fundBalance := big.NewInt(100000000000000000)
-	fr.FundAccount(testAddr.Address(), fundBalance)
+	fr.FundAccount(testAddr, fundBalance)
 
-	privateKeyData := []byte("some_private_key_data")
-	contractAddr := contract.Ref(testAddr)
-	receipt := contractAddr.SendTransaction("setPrivateKey", []interface{}{privateKeyData}, nil)
+	contractAddr := contract.Ref(privKey)
+	skHex := hex.EncodeToString(crypto.FromECDSA(privKey.Priv))
 
-	if receipt.Failed() {
-		log.Fatalf("setPrivateKey transaction failed: %v", receipt.Err)
-	}
+	receipt := contractAddr.SendTransaction("updatePrivateKey", []interface{}{}, []byte(skHex))
 
 	tokenId := big.NewInt(1)
-	recipient := common.HexToAddress("0x123...")
 
-	receipt = contractAddr.SendTransaction("signL1MintApproval", []interface{}{tokenId, recipient}, nil)
+	// Call createEIP712Digest to generate digestHash
+	digestHash := contract.Call("createEIP712Digest", []interface{}{tokenId, testAddr})
 
-	if receipt.Failed() {
-		log.Fatalf("signL1MintApproval transaction failed: %v", receipt.Err)
+	// Sign the digest in Go
+	signature, err := crypto.Sign(digestHash[0].([]byte), privKey.Priv)
+	if err != nil {
+		log.Fatalf("Error signing message: %v", err)
 	}
 
+	// Call signL1MintApproval and compare signatures
+	receipt = contractAddr.SendTransaction("signL1MintApproval", []interface{}{tokenId, testAddr}, nil)
 	nfteeApprovalEvent := &NFTEEApproval{}
 	if err := nfteeApprovalEvent.Unpack(receipt.Logs[0]); err != nil {
 		panic(err)
 	}
 
-	tokenIdPadded := leftPadBytes(tokenId.Bytes(), 32)
-	recipientPadded := recipient.Bytes()
+	fmt.Println(signature)
+	fmt.Println(nfteeApprovalEvent.SignedMessage)
 
-	valid := ValidateEIP712Message(nfteeApprovalEvent.SignedMessage, tokenIdPadded, recipientPadded)
-	if !valid {
-		log.Fatal("EIP-712 message validation failed")
+	if !bytes.Equal(signature, nfteeApprovalEvent.SignedMessage) {
+		log.Fatal("Signed messages do not match")
+	} else {
+		fmt.Println("Signed messages match")
 	}
 }
+
+// NFTEEApprovalEventABI is the ABI of the NFTEEApproval event.
+var NFTEEApprovalEventABI = `[{"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes","name":"signedMessage","type":"bytes"}],"name":"NFTEEApproval","type":"event"}]`
 
 type NFTEEApproval struct {
 	SignedMessage []byte
 }
 
 func (na *NFTEEApproval) Unpack(log *types.Log) error {
-	na.SignedMessage = log.Data
-	return nil
+	eventABI, err := abi.JSON(strings.NewReader(NFTEEApprovalEventABI))
+	if err != nil {
+		return err
+	}
+
+	return eventABI.UnpackIntoInterface(na, "NFTEEApproval", log.Data)
 }
 
 type relayHandlerExample struct{}
@@ -103,18 +114,23 @@ func encodePacked(data ...[]byte) []byte {
 func ValidateEIP712Message(signedMessage, tokenId, recipient []byte) bool {
 	tokenIdHash := keccak256(tokenId)
 	recipientHash := keccak256(recipient)
+	nameHash := keccak256([]byte("SUAVE_NFT"))
+	symbolHash := keccak256([]byte("NFTEE"))
+
+	mintTypeHashBytes := common.FromHex(MINT_TYPEHASH)
+	domainSeparatorBytes := common.FromHex(DOMAIN_SEPARATOR)
 
 	structHash := keccak256(encodePacked(
-		MINT_TYPEHASH,
-		NAME_HASH,
-		SYMBOL_HASH,
+		mintTypeHashBytes,
+		nameHash,
+		symbolHash,
 		tokenIdHash,
 		recipientHash,
 	))
 
 	digestHash := keccak256(encodePacked(
 		[]byte("\x19\x01"),
-		DOMAIN_SEPARATOR,
+		domainSeparatorBytes,
 		structHash,
 	))
 

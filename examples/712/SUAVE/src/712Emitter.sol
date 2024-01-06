@@ -29,16 +29,16 @@ contract Emitter {
         require(Suave.isConfidential());
 
         bytes memory confidentialInputs = Suave.confidentialInputs();
-        return abi.decode(confidentialInputs, (bytes));
+        return confidentialInputs;
     }
 
     event PrivateKeyUpdateEvent(Suave.DataId dataID);
 
     // setPrivateKey is the onchain portion of the Confidential Compute Request
     // inside we need to store our reference to our private key for future use
-    // we must do this because setPrivateKey() is offchain and can't directly store onchain without this
+    // we must do this because updatePrivateKey() is offchain and can't directly store onchain without this
     function setPrivateKey(Suave.DataId dataID) public {
-        require(msg.sender == owner, "only owner can update");
+        // require(msg.sender == owner, "only owner can update");
         privateKeyDataID = dataID;
         emit PrivateKeyUpdateEvent(dataID);
     }
@@ -46,7 +46,7 @@ contract Emitter {
     // offchain portion of Confidential Compute Request to update privateKey
     function updatePrivateKey() public returns (bytes memory) {
         require(Suave.isConfidential());
-        require(msg.sender == owner, "only owner can update");
+        // // require(msg.sender == owner, "only owner can update");
 
         bytes memory privateKey = this.fetchConfidentialPrivateKey();
 
@@ -72,19 +72,24 @@ contract Emitter {
         emit NFTEEApproval(msg);
     }
 
-    // Function to sign and emit a signed EIP 712 digest for minting an NFTEE on L1
-    function signL1MintApproval(uint256 tokenId, address recipient) public view returns (bytes memory) {
-        require(Suave.isConfidential());
+    // Function to create EIP-712 digest
+    function createEIP712Digest(uint256 tokenId, address recipient) public view returns (bytes memory) {
         require(Suave.DataId.unwrap(privateKeyDataID) != bytes16(0), "private key is not set");
 
-        // Create the EIP-712 digest using the same structure as in SuaveNFT
         bytes32 structHash =
             keccak256(abi.encode(MINT_TYPEHASH, keccak256(bytes(NAME)), keccak256(bytes(SYMBOL)), tokenId, recipient));
 
         bytes32 digestHash = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
 
-        // Convert bytes32 digest to bytes
-        bytes memory digest = abi.encodePacked(digestHash);
+        return abi.encodePacked(digestHash);
+    }
+
+    // Function to sign and emit a signed EIP 712 digest for minting an NFTEE on L1
+    function signL1MintApproval(uint256 tokenId, address recipient) public view returns (bytes memory) {
+        require(Suave.isConfidential());
+        require(Suave.DataId.unwrap(privateKeyDataID) != bytes16(0), "private key is not set");
+
+        bytes memory digest = createEIP712Digest(tokenId, recipient);
 
         bytes memory signerPrivateKey = Suave.confidentialRetrieve(privateKeyDataID, cstoreKey);
 
