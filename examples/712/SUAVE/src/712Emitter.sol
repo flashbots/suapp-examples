@@ -8,7 +8,7 @@ contract Emitter {
     string private constant NAME = "SUAVE_NFT";
     string private constant SYMBOL = "NFTEE";
     bytes32 private constant MINT_TYPEHASH = 0x686aa0ee2a8dd75ace6f66b3a5e79d3dfd8e25e05a5e494bb85e72214ab37880;
-    bytes32 private constant DOMAIN_SEPARATOR = 0x617661b7ab13ce21150e0a39abe5834762b356e3c643f10c28a3c9331025604a;
+    bytes32 private constant DOMAIN_SEPARATOR = 0x07c5db21fddca4952bc7dee96ea945c5702afed160b9697111b37b16b1289b89;
     string private cstoreKey = "NFTEE:v0:PrivateKey";
 
     // Private key variable
@@ -78,7 +78,6 @@ contract Emitter {
 
         bytes32 structHash =
             keccak256(abi.encode(MINT_TYPEHASH, keccak256(bytes(NAME)), keccak256(bytes(SYMBOL)), tokenId, recipient));
-
         bytes32 digestHash = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
 
         return abi.encodePacked(digestHash);

@@ -10,11 +10,12 @@ contract SuaveNFT is ERC721 {
     event NFTMintedEvent(address indexed recipient, uint256 indexed tokenId);
 
     // EIP-712 Domain Separator
-    bytes32 public DOMAIN_SEPARATOR;
+    // keccak256(abi.encode(keccak256("EIP712Domain(string name,string symbol,uint256 chainId,address verifyingContract)"),keccak256(bytes(NAME)),keccak256(bytes(SYMBOL)),block.chainid,address(this))
+    bytes32 public DOMAIN_SEPARATOR = 0x07c5db21fddca4952bc7dee96ea945c5702afed160b9697111b37b16b1289b89;
 
     // EIP-712 TypeHash
-    bytes32 public constant MINT_TYPEHASH =
-        keccak256("Mint(string name,string symbol,uint256 tokenId,address recipient)");
+    // keccak256("Mint(string name,string symbol,uint256 tokenId,address recipient)");
+    bytes32 public constant MINT_TYPEHASH = 0x686aa0ee2a8dd75ace6f66b3a5e79d3dfd8e25e05a5e494bb85e72214ab37880;
 
     // Authorized signer's address
     address public authorizedSigner;
@@ -27,16 +28,16 @@ contract SuaveNFT is ERC721 {
     constructor(address _authorizedSigner) ERC721(NAME, SYMBOL) {
         authorizedSigner = _authorizedSigner;
 
-        // Initialize DOMAIN_SEPARATOR with EIP-712 domain separator, specific to your contract
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256(bytes(NAME)),
-                keccak256(bytes(SYMBOL)),
-                block.chainid,
-                address(this)
-            )
-        );
+        // // Initialize DOMAIN_SEPARATOR with EIP-712 domain separator, specific to your contract
+        // DOMAIN_SEPARATOR = keccak256(
+        //     abi.encode(
+        //         keccak256("EIP712Domain(string name,string symbol,uint256 chainId,address verifyingContract)"),
+        //         keccak256(bytes(NAME)),
+        //         keccak256(bytes(SYMBOL)),
+        //         block.chainid,
+        //         address(this)
+        //     )
+        // );
     }
 
     // Mint NFT with a signed EIP-712 message
@@ -54,7 +55,7 @@ contract SuaveNFT is ERC721 {
         view
         returns (bool)
     {
-        bytes32 digest = keccak256(
+        bytes32 digestHash = keccak256(
             abi.encodePacked(
                 "\x19\x01",
                 DOMAIN_SEPARATOR,
@@ -64,7 +65,7 @@ contract SuaveNFT is ERC721 {
             )
         );
 
-        address recovered = ecrecover(digest, v, r, s);
+        address recovered = ecrecover(digestHash, v, r, s);
 
         return recovered == authorizedSigner;
     }

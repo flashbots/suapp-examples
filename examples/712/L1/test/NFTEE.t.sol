@@ -36,11 +36,11 @@ contract SuaveNFTTest is Test {
             );
             bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
             // example forge logs for debugging 712
-            // console.logBytes32(DOMAIN_SEPARATOR);
-            // console.logBytes32(suaveNFT.MINT_TYPEHASH());
-            // console.logBytes32(keccak256(bytes(suaveNFT.NAME())));
-            // console.logBytes32(keccak256(bytes(suaveNFT.SYMBOL())));
-            // console.logBytes32(digest);
+            console.logBytes32(DOMAIN_SEPARATOR);
+            console.logBytes32(suaveNFT.MINT_TYPEHASH());
+            console.logBytes32(keccak256(bytes(suaveNFT.NAME())));
+            console.logBytes32(keccak256(bytes(suaveNFT.SYMBOL())));
+            console.logBytes32(digest);
 
             // Sign the digest
             (v, r, s) = vm.sign(signerPrivateKey, digest);
