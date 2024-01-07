@@ -158,21 +158,20 @@ func (c *Contract) SendTransaction(method string, args []interface{}, confidenti
 }
 
 type Framework struct {
-	config *Config
-	rpc    *rpc.Client
-	clt    *sdk.Client
+	config        *Config
+	rpc           *rpc.Client
+	clt           *sdk.Client
+	kettleAddress common.Address
 }
 
 type Config struct {
 	KettleRPC     string
-	KettleAddr    common.Address
 	FundedAccount *PrivKey
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		KettleRPC:  "http://localhost:8545",
-		KettleAddr: common.HexToAddress("b5feafbdd752ad52afb7e1bd2e40432a485bbb7f"),
+		KettleRPC: "http://localhost:8545",
 
 		// This account is funded in both devnev networks
 		// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
@@ -184,12 +183,19 @@ func New() *Framework {
 	config := DefaultConfig()
 
 	rpc, _ := rpc.Dial(config.KettleRPC)
-	clt := sdk.NewClient(rpc, config.FundedAccount.Priv, config.KettleAddr)
+
+	var accounts []common.Address
+	if err := rpc.Call(&accounts, "eth_kettleAddress"); err != nil {
+		panic(fmt.Sprintf("failed to get kettle address: %v", err))
+	}
+
+	clt := sdk.NewClient(rpc, config.FundedAccount.Priv, accounts[0])
 
 	return &Framework{
-		config: DefaultConfig(),
-		rpc:    rpc,
-		clt:    clt,
+		config:        config,
+		kettleAddress: accounts[0],
+		rpc:           rpc,
+		clt:           clt,
 	}
 }
 
@@ -228,9 +234,8 @@ func (c *Contract) Ref(acct *PrivKey) *Contract {
 }
 
 func (f *Framework) NewClient(acct *PrivKey) *sdk.Client {
-	cc := DefaultConfig()
-	rpc, _ := rpc.Dial(cc.KettleRPC)
-	return sdk.NewClient(rpc, acct.Priv, cc.KettleAddr)
+	rpc, _ := rpc.Dial(f.config.KettleRPC)
+	return sdk.NewClient(rpc, acct.Priv, f.kettleAddress)
 }
 
 func (f *Framework) SignTx(priv *PrivKey, tx *types.LegacyTx) (*types.Transaction, error) {
