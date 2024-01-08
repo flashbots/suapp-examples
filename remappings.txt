@@ -1,3 +1,0 @@
-forge-std/=lib/forge-std/src/
-suave-std/=lib/suave-std/src/
-solmate/=lib/solmate/src/
