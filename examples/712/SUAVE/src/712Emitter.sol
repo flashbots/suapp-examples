@@ -38,7 +38,6 @@ contract Emitter {
     // inside we need to store our reference to our private key for future use
     // we must do this because updatePrivateKey() is offchain and can't directly store onchain without this
     function setPrivateKey(Suave.DataId dataID) public {
-        // require(msg.sender == owner, "only owner can update");
         privateKeyDataID = dataID;
         emit PrivateKeyUpdateEvent(dataID);
     }
@@ -46,7 +45,6 @@ contract Emitter {
     // offchain portion of Confidential Compute Request to update privateKey
     function updatePrivateKey() public returns (bytes memory) {
         require(Suave.isConfidential());
-        // // require(msg.sender == owner, "only owner can update");
 
         bytes memory privateKey = this.fetchConfidentialPrivateKey();
 

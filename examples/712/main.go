@@ -21,39 +21,43 @@ import (
 	"github.com/flashbots/suapp-examples/framework"
 )
 
-// Constants
 const (
+	// Deployment specific
+	PRIV_KEY    = "VALID_PRIVATE_KEY"    // FILL IN TO RUN EXAMPLE
+	ETH_RPC_URL = "VALID_ETH_L1_RPC_URL" // FILL IN TO RUN EXAMPLE
+
+	// Contract Specific
 	MINT_TYPEHASH    = "0x686aa0ee2a8dd75ace6f66b3a5e79d3dfd8e25e05a5e494bb85e72214ab37880"
 	DOMAIN_SEPARATOR = "0x617661b7ab13ce21150e0a39abe5834762b356e3c643f10c28a3c9331025604a"
-	ethRPCURL        = "https://eth-goerli.g.alchemy.com/v2/FXjSPpH91SDIgA6ES9TavZauY6NAlOFn"
+	ETH_CHAIN_ID     = 5
+	NFTEE_TOKEN_ID   = 1
 )
 
 func main() {
-
-	// TODO :
-	//	-  clean up priv key handling
-	//	-  add dynamic domain seperator handling i.e. pass it to the SUAVE contract
+	// create private key to be used on SUAVE and Eth L1
+	privKey := framework.NewPrivKeyFromHex("VALID_PRIVATE_KEY")
+	fmt.Printf("SUAVE Signer Address: %s\n", privKey.Address())
 
 	// Deploy SUAVE L1 Contract
-	suaveContractAddress, suaveTxHash, suaveSignerAddr, suaveSig, privKey := deploySuaveContract()
+	suaveContractAddress, suaveTxHash, suaveSig := deploySuaveContract(privKey)
 
 	fmt.Printf("SUAVE Contract deployed at: %s\n", suaveContractAddress.Hex())
 	fmt.Printf("SUAVE Transaction Hash: %s\n", suaveTxHash.Hex())
-	fmt.Printf("SUAVE Signer Address: %s\n", suaveSignerAddr.Hex())
 
-	// Deploy Ethereum L1 Contract with SUAVE signer address
-	ethContractAddress, ethTxHash, ok := deployEthContract(suaveSignerAddr, suaveSig, privKey)
+	// Deploy Ethereum L1 Contract and Mint NFT
+	ethContractAddress, ethTxHash, ok := deployEthContractAndMint(privKey.Address(), suaveSig, privKey.Priv)
 
 	fmt.Printf("Ethereum Contract deployed at: %s\n", ethContractAddress.Hex())
 	fmt.Printf("Ethereum Transaction Hash: %s\n", ethTxHash.Hex())
 
+	// Check if NFT was minted
 	if !ok {
-		panic("NFT minting on L1 failed")
+		panic("NFTEE minting on L1 failed")
 	}
 
 }
 
-func deploySuaveContract() (common.Address, common.Hash, common.Address, []byte, *ecdsa.PrivateKey) {
+func deploySuaveContract(privKey *framework.PrivKey) (common.Address, common.Hash, []byte) {
 	relayerURL := "localhost:1234"
 	go func() {
 		log.Fatal(http.ListenAndServe(relayerURL, &relayHandlerExample{}))
@@ -62,7 +66,6 @@ func deploySuaveContract() (common.Address, common.Hash, common.Address, []byte,
 	fr := framework.New()
 	contract := fr.DeployContract("712Emitter.sol/Emitter.json")
 
-	privKey := framework.NewPrivKeyFromHex("abc")
 	addr := privKey.Address()
 	fundBalance := big.NewInt(100000000000000000)
 	fr.FundAccount(addr, fundBalance)
@@ -72,7 +75,7 @@ func deploySuaveContract() (common.Address, common.Hash, common.Address, []byte,
 
 	receipt := contractAddr.SendTransaction("updatePrivateKey", []interface{}{}, []byte(skHex))
 
-	tokenId := big.NewInt(1)
+	tokenId := big.NewInt(NFTEE_TOKEN_ID)
 
 	// Call createEIP712Digest to generate digestHash
 	digestHash := contract.Call("createEIP712Digest", []interface{}{tokenId, addr})
@@ -106,16 +109,16 @@ func deploySuaveContract() (common.Address, common.Hash, common.Address, []byte,
 		signature = nfteeApprovalEvent.SignedMessage
 	}
 
-	return contractAddr.Address(), receipt.TxHash, addr, signature, privKey.Priv
+	return contractAddr.Address(), receipt.TxHash, signature
 }
 
-func deployEthContract(suaveSignerAddr common.Address, suaveSignature []byte, privKey *ecdsa.PrivateKey) (common.Address, common.Hash, bool) {
-	ethClient, err := ethclient.Dial(ethRPCURL)
+func deployEthContractAndMint(suaveSignerAddr common.Address, suaveSignature []byte, privKey *ecdsa.PrivateKey) (common.Address, common.Hash, bool) {
+	ethClient, err := ethclient.Dial(ETH_RPC_URL)
 	if err != nil {
 		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
 	}
 
-	auth, err := bind.NewKeyedTransactorWithChainID(privKey, big.NewInt(5)) // Chain ID for Ethereum Goerli
+	auth, err := bind.NewKeyedTransactorWithChainID(privKey, big.NewInt(ETH_CHAIN_ID)) // Chain ID for Goerli
 	if err != nil {
 		log.Fatalf("Failed to create authorized transactor: %v", err)
 	}
@@ -131,11 +134,11 @@ func deployEthContract(suaveSignerAddr common.Address, suaveSignature []byte, pr
 		log.Fatalf("Failed to deploy new contract: %v", err)
 	}
 
-	// Wait for the transaction to be mined
-	fmt.Println("Waiting for contract deployment transaction to be mined...")
+	// Wait for the transaction to be included
+	fmt.Println("Waiting for contract deployment transaction to be included...")
 	receipt, err := bind.WaitMined(context.Background(), ethClient, tx)
 	if err != nil {
-		log.Fatalf("Error waiting for contract deployment transaction to be mined: %v", err)
+		log.Fatalf("Error waiting for contract deployment transaction to be included: %v", err)
 	}
 
 	if receipt.Status != types.ReceiptStatusSuccessful {
@@ -146,8 +149,7 @@ func deployEthContract(suaveSignerAddr common.Address, suaveSignature []byte, pr
 	fmt.Println("Contract deployed, address:", receipt.ContractAddress.Hex())
 
 	// Mint NFT with the signature from SUAVE
-	tokenId := big.NewInt(1)
-	fmt.Printf("intended NFT recipient : and %s ID : %d \n", suaveSignerAddr, tokenId)
+	tokenId := big.NewInt(NFTEE_TOKEN_ID)
 	isMinted, err := mintNFTWithSignature(receipt.ContractAddress, tokenId, suaveSignerAddr, suaveSignature, ethClient, auth, artifact.Abi)
 	if err != nil {
 		log.Printf("Error minting NFT: %v", err)
@@ -179,14 +181,13 @@ func mintNFTWithSignature(contractAddress common.Address, tokenId *big.Int, reci
 		v += 27
 	}
 
-	fmt.Printf("intended NFT recipient : and %s ID : %d \n", recipient, tokenId)
 	tx, err := contract.Transact(auth, "mintNFTWithSignature", tokenId, recipient, v, r, s)
 	if err != nil {
 		return false, fmt.Errorf("mintNFTWithSignature transaction failed: %v", err)
 	}
 
-	// Wait for the transaction to be mined
-	fmt.Println("Waiting for mint transaction to be mined...")
+	// Wait for the transaction to be included
+	fmt.Println("Waiting for mint transaction to be included...")
 	receipt, err := bind.WaitMined(context.Background(), client, tx)
 	if err != nil {
 		return false, fmt.Errorf("waiting for mint transaction mining failed: %v", err)
