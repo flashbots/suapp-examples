@@ -73,7 +73,7 @@ func deploySuaveContract(privKey *framework.PrivKey) (common.Address, common.Has
 	contractAddr := contract.Ref(privKey)
 	skHex := hex.EncodeToString(crypto.FromECDSA(privKey.Priv))
 
-	receipt := contractAddr.SendTransaction("updatePrivateKey", []interface{}{}, []byte(skHex))
+	_ = contractAddr.SendTransaction("updatePrivateKey", []interface{}{}, []byte(skHex))
 
 	tokenId := big.NewInt(NFTEE_TOKEN_ID)
 
@@ -81,7 +81,7 @@ func deploySuaveContract(privKey *framework.PrivKey) (common.Address, common.Has
 	digestHash := contract.Call("createEIP712Digest", []interface{}{tokenId, addr})
 
 	// Call signL1MintApproval and compare signatures
-	receipt = contractAddr.SendTransaction("signL1MintApproval", []interface{}{tokenId, addr}, nil)
+	receipt := contractAddr.SendTransaction("signL1MintApproval", []interface{}{tokenId, addr}, nil)
 	nfteeApprovalEvent := &NFTEEApproval{}
 	if err := nfteeApprovalEvent.Unpack(receipt.Logs[0]); err != nil {
 		panic(err)
@@ -216,14 +216,6 @@ func (na *NFTEEApproval) Unpack(log *types.Log) error {
 	}
 
 	return eventABI.UnpackIntoInterface(na, "NFTEEApproval", log.Data)
-}
-
-func encodePacked(data ...[]byte) []byte {
-	var packed []byte
-	for _, b := range data {
-		packed = append(packed, b...)
-	}
-	return packed
 }
 
 type relayHandlerExample struct {
