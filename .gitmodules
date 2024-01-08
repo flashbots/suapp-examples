@@ -5,6 +5,3 @@
 [submodule "lib/suave-std"]
 	path = lib/suave-std
 	url = https://github.com/flashbots/suave-std
-[submodule "examples/712/lib"]
-	path = examples/712/lib
-	url = https://github.com/transmissions11/solmate
