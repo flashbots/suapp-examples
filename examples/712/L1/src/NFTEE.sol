@@ -28,6 +28,7 @@ contract SuaveNFT is ERC721 {
     constructor(address _authorizedSigner) ERC721(NAME, SYMBOL) {
         authorizedSigner = _authorizedSigner;
 
+        // TODO: Make dynamic
         // // Initialize DOMAIN_SEPARATOR with EIP-712 domain separator, specific to your contract
         // DOMAIN_SEPARATOR = keccak256(
         //     abi.encode(
