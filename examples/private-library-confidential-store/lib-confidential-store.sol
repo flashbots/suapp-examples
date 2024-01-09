@@ -3,9 +3,7 @@ pragma solidity ^0.8.8;
 import "suave-std/suavelib/Suave.sol";
 
 contract PublicSuapp {
-    event ContractRegistered (
-        Suave.DataId dataId
-    );
+    event ContractRegistered(Suave.DataId dataId);
 
     function registerContractCallback(Suave.DataId dataId) public payable {
         emit ContractRegistered(dataId);
@@ -23,8 +21,7 @@ contract PublicSuapp {
         return abi.encodeWithSelector(this.registerContractCallback.selector, dataRecord.id);
     }
 
-    function exampleCallback() public {
-    }
+    function exampleCallback() public {}
 
     function example(Suave.DataId dataId) public payable returns (bytes memory) {
         bytes memory bytecode = Suave.confidentialRetrieve(dataId, "bytecode");
@@ -56,6 +53,6 @@ interface PrivateLibraryI {
 
 contract PrivateLibrary {
     function add(uint256 a, uint256 b) public pure returns (uint256) {
-        return a+b;
+        return a + b;
     }
 }
