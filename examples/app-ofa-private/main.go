@@ -50,7 +50,7 @@ func main() {
 	})
 
 	// Step 2. Send the initial transaction
-	fmt.Println("2. Send bid")
+	fmt.Println("2. Send dataRecord")
 
 	refundPercent := 10
 	bundle := &types.SBundle{
@@ -60,7 +60,7 @@ func main() {
 	}
 	bundleBytes, _ := json.Marshal(bundle)
 
-	// new bid inputs
+	// new dataRecord inputs
 	contractAddr1 := contract.Ref(testAddr1)
 	receipt := contractAddr1.SendTransaction("newOrder", []interface{}{}, bundleBytes)
 
@@ -69,7 +69,7 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("Hint event id", hintEvent.BidId)
+	fmt.Println("Hint event id", hintEvent.DataRecordId)
 
 	// Step 3. Send the backrun transaction
 	fmt.Println("3. Send backrun")
@@ -82,19 +82,19 @@ func main() {
 
 	// backrun inputs
 	contractAddr2 := contract.Ref(testAddr2)
-	receipt = contractAddr2.SendTransaction("newMatch", []interface{}{hintEvent.BidId}, backRunBundleBytes)
+	receipt = contractAddr2.SendTransaction("newMatch", []interface{}{hintEvent.DataRecordId}, backRunBundleBytes)
 
 	matchEvent := &HintEvent{}
 	if err := matchEvent.Unpack(receipt.Logs[0]); err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Match event id", matchEvent.BidId)
+	fmt.Println("Match event id", matchEvent.DataRecordId)
 
 	// Step 4. Emit the batch to the relayer
 	fmt.Println("4. Emit batch")
 
-	contract.SendTransaction("emitMatchBidAndHint", []interface{}{"http://" + relayerURL, matchEvent.BidId}, backRunBundleBytes)
+	contract.SendTransaction("emitMatchDataRecordAndHint", []interface{}{"http://" + relayerURL, matchEvent.DataRecordId}, backRunBundleBytes)
 }
 
 var hintEventABI abi.Event
@@ -105,8 +105,8 @@ func init() {
 }
 
 type HintEvent struct {
-	BidId [16]byte
-	Hint  []byte
+	DataRecordId [16]byte
+	Hint         []byte
 }
 
 func (h *HintEvent) Unpack(log *types.Log) error {
@@ -114,7 +114,7 @@ func (h *HintEvent) Unpack(log *types.Log) error {
 	if err != nil {
 		return err
 	}
-	h.BidId = unpacked[0].([16]byte)
+	h.DataRecordId = unpacked[0].([16]byte)
 	h.Hint = unpacked[1].([]byte)
 	return nil
 }
