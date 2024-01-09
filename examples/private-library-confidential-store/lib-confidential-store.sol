@@ -1,14 +1,12 @@
 pragma solidity ^0.8.8;
 
-import "../../suave-geth/suave/sol/libraries/Suave.sol";
+import "suave-std/suavelib/Suave.sol";
 
 contract PublicSuapp {
-    event ContractRegistered (
-        Suave.BidId bidId
-    );
+    event ContractRegistered(Suave.DataId dataId);
 
-    function registerContractCallback(Suave.BidId bidId) public payable {
-        emit ContractRegistered(bidId);
+    function registerContractCallback(Suave.DataId dataId) public payable {
+        emit ContractRegistered(dataId);
     }
 
     function registerContract() public payable returns (bytes memory) {
@@ -17,17 +15,16 @@ contract PublicSuapp {
         address[] memory allowedList = new address[](1);
         allowedList[0] = address(this);
 
-        Suave.Bid memory bid = Suave.newBid(0, allowedList, allowedList, "contract");
-        Suave.confidentialStore(bid.id, "bytecode", bytecode);
+        Suave.DataRecord memory dataRecord = Suave.newDataRecord(0, allowedList, allowedList, "contract");
+        Suave.confidentialStore(dataRecord.id, "bytecode", bytecode);
 
-        return abi.encodeWithSelector(this.registerContractCallback.selector, bid.id);
+        return abi.encodeWithSelector(this.registerContractCallback.selector, dataRecord.id);
     }
 
-    function exampleCallback() public {
-    }
+    function exampleCallback() public {}
 
-    function example(Suave.BidId bidId) public payable returns (bytes memory) {
-        bytes memory bytecode = Suave.confidentialRetrieve(bidId, "bytecode");
+    function example(Suave.DataId dataId) public payable returns (bytes memory) {
+        bytes memory bytecode = Suave.confidentialRetrieve(dataId, "bytecode");
         address addr = deploy(bytecode);
 
         PrivateLibraryI c = PrivateLibraryI(addr);
@@ -56,6 +53,6 @@ interface PrivateLibraryI {
 
 contract PrivateLibrary {
     function add(uint256 a, uint256 b) public pure returns (uint256) {
-        return a+b;
+        return a + b;
     }
 }
