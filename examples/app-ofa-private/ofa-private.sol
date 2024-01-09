@@ -59,7 +59,7 @@ contract OFAPrivate {
         Suave.DataId[] memory dataRecords = new Suave.DataId[](2);
         dataRecords[0] = shareDataRecordId;
         dataRecords[1] = hintOrder.id;
-        Suave.confidentialStore(hintOrder.id, "mevshare:v0:mergedDataRecords", abi.encode(dataRecords));
+        Suave.confidentialStore(hintOrder.id, "mevshare:v0:mergedBids", abi.encode(dataRecords));
 
         return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
     }
