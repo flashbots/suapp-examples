@@ -116,13 +116,12 @@ func (h *HintEvent) Unpack(log *types.Log) error {
 	if err != nil {
 		return err
 	}
-	h.DataRecordId = unpacked[0].([16]byte)
-	h.Hint = unpacked[1].([]byte)
+	h.DataRecordId, _ = unpacked[0].([16]byte)
+	h.Hint, _ = unpacked[1].([]byte)
 	return nil
 }
 
-type relayHandlerExample struct {
-}
+type relayHandlerExample struct{}
 
 func (rl *relayHandlerExample) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := io.ReadAll(r.Body)

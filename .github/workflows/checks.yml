@@ -67,7 +67,7 @@ jobs:
 
       - name: Run suave
         run: |
-          suave-geth --suave.dev --suave.eth.external-whitelist localhost &
+          docker-compose up -d
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
