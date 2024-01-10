@@ -9,7 +9,7 @@ func main() {
 	privateLibrary, _ := framework.ReadArtifact("lib-confidential-store.sol/PrivateLibrary.json")
 
 	fr := framework.New()
-	suapp := fr.DeployContract("lib-confidential-store.sol/PublicSuapp.json")
+	suapp := fr.Suave.DeployContract("lib-confidential-store.sol/PublicSuapp.json")
 
 	// Deploy the contract and get the bid id
 	receipt := suapp.SendTransaction("registerContract", nil, privateLibrary.Code)

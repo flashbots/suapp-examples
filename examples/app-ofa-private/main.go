@@ -15,13 +15,13 @@ import (
 )
 
 func main() {
-	relayerURL := "localhost:1234"
+	relayerURL := "0.0.0.0:1234"
 	go func() {
 		log.Fatal(http.ListenAndServe(relayerURL, &relayHandlerExample{}))
 	}()
 
 	fr := framework.New()
-	contract := fr.DeployContract("ofa-private.sol/OFAPrivate.json")
+	contract := fr.Suave.DeployContract("ofa-private.sol/OFAPrivate.json")
 
 	// Step 1. Create and fund the accounts we are going to frontrun/backrun
 	fmt.Println("1. Create and fund test accounts")
@@ -30,23 +30,27 @@ func main() {
 	testAddr2 := framework.GeneratePrivKey()
 
 	fundBalance := big.NewInt(100000000000000000)
-	fr.FundAccount(testAddr1.Address(), fundBalance)
-	fr.FundAccount(testAddr2.Address(), fundBalance)
+	if err := fr.L1.FundAccount(testAddr1.Address(), fundBalance); err != nil {
+		log.Fatal(err)
+	}
+	if err := fr.L1.FundAccount(testAddr2.Address(), fundBalance); err != nil {
+		log.Fatal(err)
+	}
 
 	targeAddr := testAddr1.Address()
 
-	ethTxn1, _ := fr.SignTx(testAddr1, &types.LegacyTx{
+	ethTxn1, _ := fr.L1.SignTx(testAddr1, &types.LegacyTx{
 		To:       &targeAddr,
 		Value:    big.NewInt(1000),
 		Gas:      21000,
-		GasPrice: big.NewInt(13),
+		GasPrice: big.NewInt(670189871),
 	})
 
-	ethTxnBackrun, _ := fr.SignTx(testAddr2, &types.LegacyTx{
+	ethTxnBackrun, _ := fr.L1.SignTx(testAddr2, &types.LegacyTx{
 		To:       &targeAddr,
 		Value:    big.NewInt(1000),
 		Gas:      21420,
-		GasPrice: big.NewInt(13),
+		GasPrice: big.NewInt(670189871),
 	})
 
 	// Step 2. Send the initial transaction
@@ -61,8 +65,7 @@ func main() {
 	bundleBytes, _ := json.Marshal(bundle)
 
 	// new dataRecord inputs
-	contractAddr1 := contract.Ref(testAddr1)
-	receipt := contractAddr1.SendTransaction("newOrder", []interface{}{}, bundleBytes)
+	receipt := contract.SendTransaction("newOrder", []interface{}{}, bundleBytes)
 
 	hintEvent := &HintEvent{}
 	if err := hintEvent.Unpack(receipt.Logs[0]); err != nil {
@@ -81,8 +84,7 @@ func main() {
 	backRunBundleBytes, _ := json.Marshal(backRunBundle)
 
 	// backrun inputs
-	contractAddr2 := contract.Ref(testAddr2)
-	receipt = contractAddr2.SendTransaction("newMatch", []interface{}{hintEvent.DataRecordId}, backRunBundleBytes)
+	receipt = contract.SendTransaction("newMatch", []interface{}{hintEvent.DataRecordId}, backRunBundleBytes)
 
 	matchEvent := &HintEvent{}
 	if err := matchEvent.Unpack(receipt.Logs[0]); err != nil {
@@ -94,7 +96,7 @@ func main() {
 	// Step 4. Emit the batch to the relayer
 	fmt.Println("4. Emit batch")
 
-	contract.SendTransaction("emitMatchDataRecordAndHint", []interface{}{"http://" + relayerURL, matchEvent.DataRecordId}, backRunBundleBytes)
+	contract.SendTransaction("emitMatchDataRecordAndHint", []interface{}{"http://172.17.0.1:1234", matchEvent.DataRecordId}, backRunBundleBytes)
 }
 
 var hintEventABI abi.Event

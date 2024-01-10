@@ -6,6 +6,6 @@ import (
 
 func main() {
 	fr := framework.New()
-	fr.DeployContract("onchain-callback.sol/OnChainCallback.json").
+	fr.Suave.DeployContract("onchain-callback.sol/OnChainCallback.json").
 		SendTransaction("example", nil, nil)
 }
