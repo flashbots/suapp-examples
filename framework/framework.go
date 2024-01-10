@@ -185,23 +185,23 @@ func DefaultConfig() *Config {
 func New() *Framework {
 	config := DefaultConfig()
 
-	kettleRpc, _ := rpc.Dial(config.KettleRPC)
+	kettleRPC, _ := rpc.Dial(config.KettleRPC)
 
 	var accounts []common.Address
-	if err := kettleRpc.Call(&accounts, "eth_kettleAddress"); err != nil {
+	if err := kettleRPC.Call(&accounts, "eth_kettleAddress"); err != nil {
 		panic(fmt.Sprintf("failed to get kettle address: %v", err))
 	}
 
-	suaveClt := sdk.NewClient(kettleRpc, config.FundedAccount.Priv, accounts[0])
+	suaveClt := sdk.NewClient(kettleRPC, config.FundedAccount.Priv, accounts[0])
 
-	l1Rpc, _ := rpc.Dial(config.L1RPC)
-	l1Clt := sdk.NewClient(l1Rpc, config.FundedAccount.Priv, common.Address{})
+	l1RPC, _ := rpc.Dial(config.L1RPC)
+	l1Clt := sdk.NewClient(l1RPC, config.FundedAccount.Priv, common.Address{})
 
 	return &Framework{
 		config:        config,
 		kettleAddress: accounts[0],
-		Suave:         &Chain{rpc: kettleRpc, clt: suaveClt, kettleAddr: accounts[0]},
-		L1:            &Chain{rpc: l1Rpc, clt: l1Clt},
+		Suave:         &Chain{rpc: kettleRPC, clt: suaveClt, kettleAddr: accounts[0]},
+		L1:            &Chain{rpc: l1RPC, clt: l1Clt},
 	}
 }
 
