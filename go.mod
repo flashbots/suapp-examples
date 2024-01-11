@@ -4,7 +4,9 @@ go 1.21.3
 
 replace github.com/ethereum/go-ethereum => github.com/flashbots/suave-geth v0.0.0-20240103141237-95ae32eaaccb
 
-require github.com/ethereum/go-ethereum v0.0.0-00010101000000-000000000000
+require (
+	github.com/ethereum/go-ethereum v0.0.0-00010101000000-000000000000
+)
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect

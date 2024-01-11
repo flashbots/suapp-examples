@@ -6,5 +6,5 @@ import (
 
 func main() {
 	fr := framework.New()
-	fr.DeployContract("confidential-store.sol/ConfidentialStore.json").SendTransaction("example", []interface{}{}, nil)
+	fr.Suave.DeployContract("confidential-store.sol/ConfidentialStore.json").SendTransaction("example", []interface{}{}, nil)
 }

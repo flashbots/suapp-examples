@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/suave/artifacts"
 	"github.com/ethereum/go-ethereum/suave/sdk"
@@ -95,9 +94,11 @@ func GeneratePrivKey() *PrivKey {
 type Contract struct {
 	*sdk.Contract
 
+	clt        *sdk.Client
+	kettleAddr common.Address
+
 	addr common.Address
 	abi  *abi.ABI
-	fr   *Framework
 }
 
 func (c *Contract) Call(methodName string) []interface{} {
@@ -110,8 +111,7 @@ func (c *Contract) Call(methodName string) []interface{} {
 		To:   &c.addr,
 		Data: input,
 	}
-	rpcClient := ethclient.NewClient(c.fr.rpc)
-	output, err := rpcClient.CallContract(context.Background(), callMsg, nil)
+	output, err := c.clt.RPC().CallContract(context.Background(), callMsg, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -159,19 +159,22 @@ func (c *Contract) SendTransaction(method string, args []interface{}, confidenti
 
 type Framework struct {
 	config        *Config
-	rpc           *rpc.Client
-	clt           *sdk.Client
 	kettleAddress common.Address
+
+	Suave *Chain
+	L1    *Chain
 }
 
 type Config struct {
 	KettleRPC     string
+	L1RPC         string
 	FundedAccount *PrivKey
 }
 
 func DefaultConfig() *Config {
 	return &Config{
 		KettleRPC: "http://localhost:8545",
+		L1RPC:     "http://localhost:8555",
 
 		// This account is funded in your local SUAVE devnet
 		// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
@@ -182,31 +185,40 @@ func DefaultConfig() *Config {
 func New() *Framework {
 	config := DefaultConfig()
 
-	rpc, _ := rpc.Dial(config.KettleRPC)
+	kettleRPC, _ := rpc.Dial(config.KettleRPC)
 
 	var accounts []common.Address
-	if err := rpc.Call(&accounts, "eth_kettleAddress"); err != nil {
+	if err := kettleRPC.Call(&accounts, "eth_kettleAddress"); err != nil {
 		panic(fmt.Sprintf("failed to get kettle address: %v", err))
 	}
 
-	clt := sdk.NewClient(rpc, config.FundedAccount.Priv, accounts[0])
+	suaveClt := sdk.NewClient(kettleRPC, config.FundedAccount.Priv, accounts[0])
+
+	l1RPC, _ := rpc.Dial(config.L1RPC)
+	l1Clt := sdk.NewClient(l1RPC, config.FundedAccount.Priv, common.Address{})
 
 	return &Framework{
 		config:        config,
 		kettleAddress: accounts[0],
-		rpc:           rpc,
-		clt:           clt,
+		Suave:         &Chain{rpc: kettleRPC, clt: suaveClt, kettleAddr: accounts[0]},
+		L1:            &Chain{rpc: l1RPC, clt: l1Clt},
 	}
 }
 
-func (f *Framework) DeployContract(path string) *Contract {
+type Chain struct {
+	rpc        *rpc.Client
+	clt        *sdk.Client
+	kettleAddr common.Address
+}
+
+func (c *Chain) DeployContract(path string) *Contract {
 	artifact, err := ReadArtifact(path)
 	if err != nil {
 		panic(err)
 	}
 
 	// deploy contract
-	txnResult, err := sdk.DeployContract(artifact.Code, f.clt)
+	txnResult, err := sdk.DeployContract(artifact.Code, c.clt)
 	if err != nil {
 		panic(err)
 	}
@@ -219,16 +231,17 @@ func (f *Framework) DeployContract(path string) *Contract {
 		panic(fmt.Errorf("transaction failed"))
 	}
 
-	contract := sdk.GetContract(receipt.ContractAddress, artifact.Abi, f.clt)
-	return &Contract{addr: receipt.ContractAddress, fr: f, abi: artifact.Abi, Contract: contract}
+	contract := sdk.GetContract(receipt.ContractAddress, artifact.Abi, c.clt)
+	return &Contract{addr: receipt.ContractAddress, clt: c.clt, kettleAddr: c.kettleAddr, abi: artifact.Abi, Contract: contract}
 }
 
 func (c *Contract) Ref(acct *PrivKey) *Contract {
+	clt := sdk.NewClient(c.clt.RPC().Client(), acct.Priv, c.kettleAddr)
+
 	cc := &Contract{
 		addr:     c.addr,
 		abi:      c.abi,
-		fr:       c.fr,
-		Contract: sdk.GetContract(c.addr, c.abi, c.fr.NewClient(acct)),
+		Contract: sdk.GetContract(c.addr, c.abi, clt),
 	}
 	return cc
 }
@@ -238,10 +251,8 @@ func (f *Framework) NewClient(acct *PrivKey) *sdk.Client {
 	return sdk.NewClient(rpc, acct.Priv, f.kettleAddress)
 }
 
-func (f *Framework) SignTx(priv *PrivKey, tx *types.LegacyTx) (*types.Transaction, error) {
-	rpc, _ := rpc.Dial("http://localhost:8545")
-
-	cltAcct1 := sdk.NewClient(rpc, priv.Priv, common.Address{})
+func (c *Chain) SignTx(priv *PrivKey, tx *types.LegacyTx) (*types.Transaction, error) {
+	cltAcct1 := sdk.NewClient(c.rpc, priv.Priv, common.Address{})
 	signedTxn, err := cltAcct1.SignTxn(tx)
 	if err != nil {
 		return nil, err
@@ -251,12 +262,12 @@ func (f *Framework) SignTx(priv *PrivKey, tx *types.LegacyTx) (*types.Transactio
 
 var errFundAccount = fmt.Errorf("failed to fund account")
 
-func (f *Framework) FundAccount(to common.Address, value *big.Int) error {
+func (c *Chain) FundAccount(to common.Address, value *big.Int) error {
 	txn := &types.LegacyTx{
 		Value: value,
 		To:    &to,
 	}
-	result, err := f.clt.SendTransaction(txn)
+	result, err := c.clt.SendTransaction(txn)
 	if err != nil {
 		return err
 	}
@@ -265,7 +276,7 @@ func (f *Framework) FundAccount(to common.Address, value *big.Int) error {
 		return err
 	}
 	// check balance
-	balance, err := f.clt.RPC().BalanceAt(context.Background(), to, nil)
+	balance, err := c.clt.RPC().BalanceAt(context.Background(), to, nil)
 	if err != nil {
 		return err
 	}

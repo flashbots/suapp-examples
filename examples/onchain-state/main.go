@@ -9,7 +9,7 @@ import (
 
 func main() {
 	fr := framework.New()
-	contract := fr.DeployContract("onchain-state.sol/OnChainState.json")
+	contract := fr.Suave.DeployContract("onchain-state.sol/OnChainState.json")
 
 	fmt.Println("1. A confidential request fails if it tries to modify the state")
 
