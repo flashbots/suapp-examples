@@ -6,6 +6,7 @@ replace github.com/ethereum/go-ethereum => github.com/flashbots/suave-geth v0.0.
 
 require (
 	github.com/ethereum/go-ethereum v0.0.0-00010101000000-000000000000
+	github.com/sethvargo/go-envconfig v1.0.0
 )
 
 require (

@@ -3,9 +3,11 @@ package framework
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -17,9 +19,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/suave/artifacts"
 	"github.com/ethereum/go-ethereum/suave/sdk"
+	envconfig "github.com/sethvargo/go-envconfig"
 )
 
 type Artifact struct {
@@ -63,6 +67,8 @@ func ReadArtifact(path string) (*Artifact, error) {
 	return art, nil
 }
 
+var _ encoding.TextUnmarshaler = &PrivKey{}
+
 type PrivKey struct {
 	Priv *ecdsa.PrivateKey
 }
@@ -75,12 +81,21 @@ func (p *PrivKey) MarshalPrivKey() []byte {
 	return crypto.FromECDSA(p.Priv)
 }
 
-func NewPrivKeyFromHex(hex string) *PrivKey {
-	key, err := crypto.HexToECDSA(hex)
+func (p *PrivKey) UnmarshalText(text []byte) error {
+	key, err := crypto.HexToECDSA(string(text))
 	if err != nil {
-		panic(fmt.Sprintf("failed to parse private key: %v", err))
+		return fmt.Errorf("failed to parse private key: %v", err)
 	}
-	return &PrivKey{Priv: key}
+	p.Priv = key
+	return nil
+}
+
+func NewPrivKeyFromHex(hex string) *PrivKey {
+	p := new(PrivKey)
+	if err := p.UnmarshalText([]byte(hex)); err != nil {
+		panic(err)
+	}
+	return p
 }
 
 func GeneratePrivKey() *PrivKey {
@@ -147,6 +162,9 @@ func (c *Contract) SendTransaction(method string, args []interface{}, confidenti
 		}
 		panic(err)
 	}
+
+	log.Printf("transaction hash: %s", txnResult.Hash().Hex())
+
 	receipt, err := txnResult.Wait()
 	if err != nil {
 		panic(err)
@@ -166,24 +184,23 @@ type Framework struct {
 }
 
 type Config struct {
-	KettleRPC     string
-	L1RPC         string
-	FundedAccount *PrivKey
-}
+	KettleRPC string `env:"KETTLE_RPC, default=http://localhost:8545"`
 
-func DefaultConfig() *Config {
-	return &Config{
-		KettleRPC: "http://localhost:8545",
-		L1RPC:     "http://localhost:8555",
+	// This account is funded in your local L1 devnet
+	FundedAccount *PrivKey `env:"KETTLE_PRIVKEY, default=91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"`
 
-		// This account is funded in your local SUAVE devnet
-		// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
-		FundedAccount: NewPrivKeyFromHex("91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"),
-	}
+	L1RPC string `env:"L1_RPC, default=http://localhost:8555"`
+
+	// This account is funded in your local SUAVE devnet
+	// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
+	FundedAccountL1 *PrivKey `env:"L1_PRIVKEY, default=91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"`
 }
 
 func New() *Framework {
-	config := DefaultConfig()
+	var config Config
+	if err := envconfig.Process(context.Background(), &config); err != nil {
+		log.Fatal(err)
+	}
 
 	kettleRPC, _ := rpc.Dial(config.KettleRPC)
 
@@ -195,10 +212,10 @@ func New() *Framework {
 	suaveClt := sdk.NewClient(kettleRPC, config.FundedAccount.Priv, accounts[0])
 
 	l1RPC, _ := rpc.Dial(config.L1RPC)
-	l1Clt := sdk.NewClient(l1RPC, config.FundedAccount.Priv, common.Address{})
+	l1Clt := sdk.NewClient(l1RPC, config.FundedAccountL1.Priv, common.Address{})
 
 	return &Framework{
-		config:        config,
+		config:        &config,
 		kettleAddress: accounts[0],
 		Suave:         &Chain{rpc: kettleRPC, clt: suaveClt, kettleAddr: accounts[0]},
 		L1:            &Chain{rpc: l1RPC, clt: l1Clt},
@@ -231,6 +248,8 @@ func (c *Chain) DeployContract(path string) *Contract {
 		panic(fmt.Errorf("transaction failed"))
 	}
 
+	log.Printf("deployed contract at %s", receipt.ContractAddress.Hex())
+
 	contract := sdk.GetContract(receipt.ContractAddress, artifact.Abi, c.clt)
 	return &Contract{addr: receipt.ContractAddress, clt: c.clt, kettleAddr: c.kettleAddr, abi: artifact.Abi, Contract: contract}
 }
@@ -262,7 +281,19 @@ func (c *Chain) SignTx(priv *PrivKey, tx *types.LegacyTx) (*types.Transaction, e
 
 var errFundAccount = fmt.Errorf("failed to fund account")
 
+func (c *Chain) RPC() *ethclient.Client {
+	return ethclient.NewClient(c.rpc)
+}
+
 func (c *Chain) FundAccount(to common.Address, value *big.Int) error {
+	balance, err := c.clt.RPC().BalanceAt(context.Background(), c.clt.Addr(), nil)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("funding account %s with %s", to.Hex(), value.String())
+	log.Printf("funder %s %s", c.clt.Addr().Hex(), balance.String())
+
 	txn := &types.LegacyTx{
 		Value: value,
 		To:    &to,
@@ -271,12 +302,14 @@ func (c *Chain) FundAccount(to common.Address, value *big.Int) error {
 	if err != nil {
 		return err
 	}
+
+	log.Printf("transaction hash: %s", result.Hash().Hex())
 	_, err = result.Wait()
 	if err != nil {
 		return err
 	}
 	// check balance
-	balance, err := c.clt.RPC().BalanceAt(context.Background(), to, nil)
+	balance, err = c.clt.RPC().BalanceAt(context.Background(), to, nil)
 	if err != nil {
 		return err
 	}

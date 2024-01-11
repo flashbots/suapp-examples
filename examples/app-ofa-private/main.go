@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,13 +13,28 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/flashbots/suapp-examples/framework"
+	envconfig "github.com/sethvargo/go-envconfig"
 )
 
+type config struct {
+	RelayerURL string `env:"RELAYER_URL, default=local"`
+}
+
 func main() {
-	relayerURL := "0.0.0.0:1234"
-	go func() {
-		log.Fatal(http.ListenAndServe(relayerURL, &relayHandlerExample{}))
-	}()
+	var cfg config
+	if err := envconfig.Process(context.Background(), &cfg); err != nil {
+		log.Fatal(err)
+	}
+
+	if cfg.RelayerURL == "local" {
+		// '172.17.0.1' is the default docker host IP that a docker container can
+		// use to connect with a service running on the host machine.
+		cfg.RelayerURL = "http://172.17.0.1:1234"
+
+		go func() {
+			log.Fatal(http.ListenAndServe("0.0.0.0:1234", &relayHandlerExample{}))
+		}()
+	}
 
 	fr := framework.New()
 	contract := fr.Suave.DeployContract("ofa-private.sol/OFAPrivate.json")
@@ -28,6 +44,9 @@ func main() {
 
 	testAddr1 := framework.GeneratePrivKey()
 	testAddr2 := framework.GeneratePrivKey()
+
+	log.Printf("Test address 1: %s", testAddr1.Address().Hex())
+	log.Printf("Test address 2: %s", testAddr2.Address().Hex())
 
 	fundBalance := big.NewInt(100000000000000000)
 	if err := fr.L1.FundAccount(testAddr1.Address(), fundBalance); err != nil {
@@ -64,8 +83,14 @@ func main() {
 	}
 	bundleBytes, _ := json.Marshal(bundle)
 
+	target, err := fr.L1.RPC().BlockNumber(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Latest goerli block: %d", target)
+
 	// new dataRecord inputs
-	receipt := contract.SendTransaction("newOrder", []interface{}{}, bundleBytes)
+	receipt := contract.SendTransaction("newOrder", []interface{}{target + 1}, bundleBytes)
 
 	hintEvent := &HintEvent{}
 	if err := hintEvent.Unpack(receipt.Logs[0]); err != nil {
@@ -83,8 +108,14 @@ func main() {
 	}
 	backRunBundleBytes, _ := json.Marshal(backRunBundle)
 
+	target, err = fr.L1.RPC().BlockNumber(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Latest goerli block: %d", target)
+
 	// backrun inputs
-	receipt = contract.SendTransaction("newMatch", []interface{}{hintEvent.DataRecordId}, backRunBundleBytes)
+	receipt = contract.SendTransaction("newMatch", []interface{}{hintEvent.DataRecordId, target + 1}, backRunBundleBytes)
 
 	matchEvent := &HintEvent{}
 	if err := matchEvent.Unpack(receipt.Logs[0]); err != nil {
@@ -93,17 +124,27 @@ func main() {
 
 	fmt.Println("Match event id", matchEvent.DataRecordId)
 
-	// Step 4. Emit the batch to the relayer
+	// Step 4. Emit the batch to the relayer and parse the output
 	fmt.Println("4. Emit batch")
 
-	contract.SendTransaction("emitMatchDataRecordAndHint", []interface{}{"http://172.17.0.1:1234", matchEvent.DataRecordId}, backRunBundleBytes)
+	receipt = contract.SendTransaction("emitMatchDataRecordAndHint", []interface{}{cfg.RelayerURL, matchEvent.DataRecordId}, backRunBundleBytes)
+	bundleHash, err := decodeBundleEmittedOutput(receipt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Bundle hash", bundleHash)
 }
 
-var hintEventABI abi.Event
+var (
+	hintEventABI       abi.Event
+	bundleEmittedEvent abi.Event
+)
 
 func init() {
 	artifact, _ := framework.ReadArtifact("ofa-private.sol/OFAPrivate.json")
 	hintEventABI = artifact.Abi.Events["HintEvent"]
+	bundleEmittedEvent = artifact.Abi.Events["BundleEmitted"]
 }
 
 type HintEvent struct {
@@ -112,13 +153,32 @@ type HintEvent struct {
 }
 
 func (h *HintEvent) Unpack(log *types.Log) error {
-	unpacked, err := hintEventABI.Inputs.Unpack(log.Data)
+	res, err := hintEventABI.ParseLog(log)
 	if err != nil {
 		return err
 	}
-	h.DataRecordId, _ = unpacked[0].([16]byte)
-	h.Hint, _ = unpacked[1].([]byte)
+	h.DataRecordId, _ = res["id"].([16]byte)
+	h.Hint, _ = res["hint"].([]byte)
 	return nil
+}
+
+func decodeBundleEmittedOutput(receipt *types.Receipt) (string, error) {
+	bundleEmitted, _ := bundleEmittedEvent.ParseLog(receipt.Logs[0])
+	response, _ := bundleEmitted["bundleRawResponse"].(string)
+
+	log.Printf("mev_share response: %s", response)
+
+	var bundleResponse []struct {
+		Result struct {
+			BundleHash string
+		}
+	}
+
+	if err := json.Unmarshal([]byte(response), &bundleResponse); err != nil {
+		return "", err
+	}
+
+	return bundleResponse[0].Result.BundleHash, nil
 }
 
 type relayHandlerExample struct{}
@@ -130,4 +190,5 @@ func (rl *relayHandlerExample) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	fmt.Println(string(bodyBytes))
+	w.Write([]byte(`[{"id":1,"result":{"bundleHash":"0x8b3302e3ffe34149ba5b2e801f21d4227faf6c7860a4e03ace2b8a6bbac54f07"},"jsonrpc":"2.0"}]`))
 }
