@@ -84,7 +84,7 @@ func (p *PrivKey) MarshalPrivKey() []byte {
 func (p *PrivKey) UnmarshalText(text []byte) error {
 	key, err := crypto.HexToECDSA(string(text))
 	if err != nil {
-		return fmt.Errorf("failed to parse private key: %v", err)
+		return fmt.Errorf("failed to parse private key: %w", err)
 	}
 	p.Priv = key
 	return nil
