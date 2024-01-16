@@ -17,7 +17,7 @@ import (
 )
 
 type config struct {
-	RelayerURL string `env:"RELAYER_URL, default=local"`
+	BuilderURL string `env:"BUILDER_URL, default=local"`
 }
 
 func main() {
@@ -26,10 +26,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if cfg.RelayerURL == "local" {
+	if cfg.BuilderURL == "local" {
 		// '172.17.0.1' is the default docker host IP that a docker container can
 		// use to connect with a service running on the host machine.
-		cfg.RelayerURL = "http://172.17.0.1:1234"
+		cfg.BuilderURL = "http://172.17.0.1:1234"
 
 		go func() {
 			log.Fatal(http.ListenAndServe("0.0.0.0:1234", &relayHandlerExample{}))
@@ -127,7 +127,7 @@ func main() {
 	// Step 4. Emit the batch to the relayer and parse the output
 	fmt.Println("4. Emit batch")
 
-	receipt = contract.SendTransaction("emitMatchDataRecordAndHint", []interface{}{cfg.RelayerURL, matchEvent.DataRecordId}, backRunBundleBytes)
+	receipt = contract.SendTransaction("emitMatchDataRecordAndHint", []interface{}{cfg.BuilderURL, matchEvent.DataRecordId}, backRunBundleBytes)
 	bundleHash, err := decodeBundleEmittedOutput(receipt)
 	if err != nil {
 		log.Fatal(err)

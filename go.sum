@@ -56,8 +56,8 @@ github.com/flashbots/go-boost-utils v1.7.0 h1:BaLeGl71nD/ro0aUzCYqHc8PiqIIaErLwc
 github.com/flashbots/go-boost-utils v1.7.0/go.mod h1:1Y0rD/e57KZZIRgkCcXRvvztW+v+eZHnWu25wxtGstU=
 github.com/flashbots/go-utils v0.4.13-0.20230919094729-c049be707f79 h1:y2obQCUIvqKISLxWxC0Tz8Oc618vA3q1xmn9GwElvfI=
 github.com/flashbots/go-utils v0.4.13-0.20230919094729-c049be707f79/go.mod h1:LauDwifaRdSK0mS5X34GR59pJtUu1T/lOFNdff1BqtI=
-github.com/flashbots/suave-geth v0.0.0-20240103141237-95ae32eaaccb h1:nm42W76MwJVn1rgI3sHE1RaVJrR1U34Kx61quBd1QbU=
-github.com/flashbots/suave-geth v0.0.0-20240103141237-95ae32eaaccb/go.mod h1:FSIekwR5M+o2lAXumvYR+E+RYgQ0yK3X8HdRMSTdagU=
+github.com/flashbots/suave-geth v0.1.1-0.20240116112006-29dd186e4608 h1:9+xpTpP49bdjql38/6I68aZQ1dejn8CoQgt5IIoCFOw=
+github.com/flashbots/suave-geth v0.1.1-0.20240116112006-29dd186e4608/go.mod h1:FSIekwR5M+o2lAXumvYR+E+RYgQ0yK3X8HdRMSTdagU=
 github.com/fsnotify/fsnotify v1.6.0 h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4HY=
 github.com/fsnotify/fsnotify v1.6.0/go.mod h1:sl3t1tCWJFWoRz9R8WJCbQihKKwmorjAbSClcnxKAGw=
 github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff h1:tY80oXqGNY4FhTFhk+o9oFHGINQ/+vhlm8HFzi6znCI=
