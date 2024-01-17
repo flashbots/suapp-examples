@@ -142,12 +142,14 @@ contract Intents {
     /// Fulfill an intent.
     /// Bundle is expected to be in `confidentialInputs` in the form of:
     ///   rlp({
-    ///     txs: [...signedTxs, TX_PLACEHOLDER, ...signedTxs],
+    ///     txs: [...signedTxs, TX_PLACEHOLDER, TX_PLACEHOLDER, ...signedTxs],
     ///     blockNumber: 0x42
     ///   })
-    ///
+    /// If only one placeholder is provided, the tx following the first one will be replaced with the user's swap tx.
+    /// We need two placeholders because the user sends two transactions; one approval and one swap.
     /// example bundle.txs: [
     ///     "0x02...1",  // signedTx 1
+    ///     "0xf00d",   // TX_PLACEHOLDER
     ///     "0xf00d",   // TX_PLACEHOLDER
     ///     "0x02...2" // signedTx 2
     /// ]

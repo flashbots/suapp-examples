@@ -173,3 +173,8 @@ dist
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# dotenv
+.env
+.env.*
+!.env.example

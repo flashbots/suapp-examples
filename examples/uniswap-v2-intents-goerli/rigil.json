@@ -1,0 +1,12 @@
+{
+    "goerli": {
+        "uniV2Router": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+        "uniV2Factory": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+        "uniV2Pair": "0x817Bd8e6909BB73cB0976d7c4A0e02c91350a383",
+        "weth": "0x37e180773D995c8CEE9dB5e63DE40330Ebf3C172",
+        "dai": "0xCD5fF331F1a417D8dEd7CFCe447c09256D7Cd6b6"
+    },
+    "suave": {
+        "intentRouter": ""
+    }
+}
