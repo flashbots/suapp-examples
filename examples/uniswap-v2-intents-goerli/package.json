@@ -1,0 +1,11 @@
+{
+  "name": "uniswap-v2-intents-goerli",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
