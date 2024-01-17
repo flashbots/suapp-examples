@@ -7,5 +7,8 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "viem": "https://github.com/flashbots/suave-viem.git#main"
   }
 }
