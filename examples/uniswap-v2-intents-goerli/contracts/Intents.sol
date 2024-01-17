@@ -4,12 +4,11 @@ pragma solidity ^0.8.13;
 // import "suave/libraries/Suave.sol";
 // import "suave/standard_peekers/bids.sol";
 // import "./SuaveWallet.sol";
-import {Suave} from "suave-std/suavelib/Suave.sol";
-import {Bundle} from "suave-std/protocols/Bundle.sol";
-import {Transactions} from "suave-std/Transactions.sol";
+import {Suave} from "lib/suave-std/src/suavelib/Suave.sol";
+import {Bundle} from "lib/suave-std/src/protocols/Bundle.sol";
+import {Transactions} from "lib/suave-std/src/Transactions.sol";
 import {UniV2Swop, SwapExactTokensForTokensRequest, TxMeta} from "./libraries/SwopLib.sol";
-import {HexEncoder} from "./util/HexEncoder.sol";
-import {Suave2} from "./util/Suave2.sol";
+import {HexEncoder} from "./libraries/HexEncoder.sol";
 
 /// Limit order for a swap. Used as a simple example for intents delivery system.
 struct LimitOrder {
@@ -211,16 +210,6 @@ contract Intents {
         }
 
         // encode bundle request
-        // bytes memory bundleReq = Suave2.encodeBundleRequestJson(
-        //     Suave2.SendBundleRequest({
-        //         txs: bundle.txs,
-        //         blockNumber: bundle.blockNumber,
-        //         minTimestamp: 0,
-        //         maxTimestamp: 0,
-        //         revertingTxHashes: new bytes32[](0),
-        //         replacementUuid: ""
-        //     })
-        // );
         bytes memory bundleRes;
         Bundle.BundleObj memory bundleObj;
         for (uint8 i = 0; i < 25; i++) {
@@ -241,25 +230,9 @@ contract Intents {
         }
         bundleRes = Bundle.encodeBundle(bundleObj).body;
 
-        // bytes memory bundleReq =
-
         // simulate bundle and revert if it fails
         // require(Suave.simulateBundle(bundleReq) > 0, "bundle sim failed");
 
-        // can't send bundle via flashbots if we use legacy txs
-        // bytes memory bundleRes = Suave.submitBundleJsonRPC(
-        //     RPC_URL,
-        //     "eth_sendBundle",
-        //     bundleReq
-        // );
-
-        // TODO: not sure if this is the right way to check for success
-        // require(abi.decode(bundleRes, (bool)), "bundle failed");
-
-        /*
-        // trigger `onFulfilledIntent`
-        suaveCallData = encodeOnFulfilledIntent(orderId);
-        */
         // trigger `onFulfilledIntent`
         suaveCallData = encodeOnFulfilledIntent(orderId, amountOut, bundleRes);
     }

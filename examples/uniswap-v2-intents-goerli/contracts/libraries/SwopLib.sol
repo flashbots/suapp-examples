@@ -51,7 +51,7 @@ library UniV2Swop {
     {
         data = abi.encodeWithSignature("approve(address,uint256)", spender, amount);
 
-        Transactions.Legacy memory txStruct = Transactions.Legacy({
+        Transactions.EIP155Request memory txStruct = Transactions.EIP155Request({
             to: token,
             gas: uint64(txMeta.gas),
             gasPrice: uint64(txMeta.gasPrice),
@@ -82,7 +82,7 @@ library UniV2Swop {
             request.deadline
         );
         // bytes memory emptyBytes = new bytes(0);
-        Transactions.Legacy memory txStruct = Transactions.Legacy({
+        Transactions.EIP155Request memory txStruct = Transactions.EIP155Request({
             to: router,
             gas: uint64(txMeta.gas),
             gasPrice: uint64(txMeta.gasPrice),
