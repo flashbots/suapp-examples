@@ -9,7 +9,8 @@ import {
 } from 'viem/src/chains/utils'
 import IntentsContract from '../../out/Intents.sol/Intents.json'
 import { 
-    LimitOrder, deployLimitOrderManager,
+    LimitOrder,
+    deployLimitOrderManager, // needed if you decide to re-deploy
 } from './lib/limitOrder'
 import { SuaveRevert } from './lib/suaveError'
 import { 
@@ -39,10 +40,13 @@ async function testIntents<T extends Transport>(
     suaveWallet: SuaveWallet<T>
     , suaveProvider: SuaveProvider<T>
     , goerliKey: Hex
-    , kettleAddress: Hex) {
-        const intentRouterAddress = TestnetConfig.suave.intentRouter as Hex
-        //   const intentRouterAddress = await deployLimitOrderManager(suaveWallet, suaveProvider)
+    , kettleAddress: Hex) 
+{
+    // swap comments on the following two lines if you want to re-deploy the LimitOrderManager
+    // const intentRouterAddress = deployLimitOrderManager(suaveWallet, suaveProvider)
+    const intentRouterAddress = TestnetConfig.suave.intentRouter as Hex
     console.log("intentRouterAddress", intentRouterAddress)
+
     const goerliWallet = createWalletClient({
         account: privateKeyToAccount(goerliKey),
         transport: http(goerli.rpcUrls.public.http[0]),
@@ -55,11 +59,11 @@ async function testIntents<T extends Transport>(
     // TODO: build this natively into the wallet client
     suaveWallet = suaveWallet.extend((client) => ({
         async sendTransaction(tx: TransactionRequestSuave): Promise<Hex> {
-        try {
-            return await client.sendTransaction(tx)
-        } catch (e) {
-            throw new SuaveRevert(e as Error)
-        }
+            try {
+                return await client.sendTransaction(tx)
+            } catch (e) {
+                throw new SuaveRevert(e as Error)
+            }
         }
     }))
 
@@ -86,14 +90,14 @@ async function testIntents<T extends Transport>(
     let fails = 0
     for (let i = 0; i < 10; i++) {
         try {
-        ccrReceipt = await suaveProvider.waitForTransactionReceipt({hash: limitOrderTxHash})
-        console.log("ccrReceipt logs", ccrReceipt.logs)
+            ccrReceipt = await suaveProvider.waitForTransactionReceipt({hash: limitOrderTxHash})
+            console.log("ccrReceipt logs", ccrReceipt.logs)
         break
         } catch (e) {
-        console.warn('error', e)
-        if (++fails >= 10) {
-            throw new Error('failed to get receipt: timed out')
-        }
+            console.warn('error', e)
+            if (++fails >= 10) {
+                throw new Error('failed to get receipt: timed out')
+            }
         }
     }
     if (!ccrReceipt) {
@@ -133,9 +137,9 @@ async function testIntents<T extends Transport>(
         account: suaveWallet.account.address,
         to: intentRouterAddress,
         data: encodeFunctionData({
-        abi: IntentsContract.abi,
-        args: [limitOrder.orderId()],
-        functionName: 'intentsPending'
+            abi: IntentsContract.abi,
+            args: [limitOrder.orderId()],
+            functionName: 'intentsPending'
         }),
         gasPrice: 10000000000n,
         gas: 42000n,
@@ -202,28 +206,28 @@ async function testIntents<T extends Transport>(
 
 async function getAmountOut(routerAddress: Hex, goerliProvider: PublicClient) {
     const abiItem = {
-    inputs: [
-        { name: 'amountIn', type: 'uint256' },
-        { name: 'reserveIn', type: 'uint256' },
-        { name: 'reserveOut', type: 'uint256' },
-    ],
-    name: 'getAmountOut',
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-    type: 'function',
+        inputs: [
+            { name: 'amountIn', type: 'uint256' },
+            { name: 'reserveIn', type: 'uint256' },
+            { name: 'reserveOut', type: 'uint256' },
+        ],
+        name: 'getAmountOut',
+        outputs: [{ name: '', type: 'uint256' }],
+        stateMutability: 'view',
+        type: 'function',
     }
     const calldata = encodeFunctionData({
-    abi: [abiItem],
-    args: [
-        1n * ETH,
-        100n * ETH,
-        42000n * ETH,
-    ],
-    functionName: 'getAmountOut'
+        abi: [abiItem],
+        args: [
+            1n * ETH,
+            100n * ETH,
+            42000n * ETH,
+        ],
+        functionName: 'getAmountOut'
     })
     const tx = {
-    to: routerAddress,
-    data: calldata,
+        to: routerAddress,
+        data: calldata,
     }
     return await goerliProvider.call(tx)
 }
@@ -231,23 +235,23 @@ async function getAmountOut(routerAddress: Hex, goerliProvider: PublicClient) {
 async function main() {
     /* call getAmountOut directly on goerli */
     const goerliProvider = createPublicClient({
-    transport: http(goerli.rpcUrls.public.http[0]),
+        transport: http(goerli.rpcUrls.public.http[0]),
     })
     const routerAddress = TestnetConfig.goerli.uniV2Router as Hex
     const goerliAmountOut = await getAmountOut(routerAddress, goerliProvider)
     console.log("goerliAmountOut", goerliAmountOut)
 
     const suaveWallet = getSuaveWallet({
-    privateKey: (config.SUAVE_KEY || TestnetConfig.suave.defaultAdminKey) as Hex,
-    transport: http(suaveRigil.rpcUrls.default.http[0]),
+        privateKey: (config.SUAVE_KEY || TestnetConfig.suave.defaultAdminKey) as Hex,
+        transport: http(suaveRigil.rpcUrls.default.http[0]),
     })
     console.log("suaveWallet", suaveWallet.account.address)
     // connect to rigil testnet
     const suaveProvider = getSuaveProvider(http(suaveRigil.rpcUrls.default.http[0]))
     const goerliKEY = (config.GOERLI_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80') as Hex
     const goerliWallet = createWalletClient({
-    account: privateKeyToAccount(goerliKEY),
-    transport: http(goerli.rpcUrls.public.http[0]),
+        account: privateKeyToAccount(goerliKEY),
+        transport: http(goerli.rpcUrls.public.http[0]),
     })
     console.log("goerliWallet", goerliWallet.account.address)
     await testIntents(suaveWallet, suaveProvider, goerliKEY, TestnetConfig.suave.testnetKettleAddress as Hex)
