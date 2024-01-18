@@ -13,9 +13,7 @@ import {
     type SuaveWallet,
     type TransactionRequestSuave
 } from 'viem/src/chains/utils'
-// import IntentsContract from '../contracts/out/Intents.sol/Intents.json'
 import IntentsContract from '../../../out/Intents.sol/Intents.json'
-import UniV2SwopLibContract from '../../../out/SwopLib.sol/UniV2Swop.json'
 
 export interface ILimitOrder {
     tokenIn: Address
