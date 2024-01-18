@@ -18,5 +18,6 @@
     "strict": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
-  }
+  },
+  "exclude": ["node_modules", "dist", "build", "coverage", "scripts", "test", "tests", "examples", "docs", "lib", "es", "dist", "build", "coverage", "scripts", "test", "tests", "examples", "docs", "lib", "es"]
 }

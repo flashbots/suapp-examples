@@ -1,5 +1,5 @@
 import {
-    Address,
+    type Address,
     type Hash,
     type Hex,
     type Transport,
