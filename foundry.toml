@@ -1,3 +1,7 @@
 [profile.default]
 src = 'examples'
 solc_version = '0.8.19'
+
+remappings = [
+    "solady/=lib/suave-std/lib/solady/"
+]
