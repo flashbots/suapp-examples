@@ -40,9 +40,12 @@ async function testIntents<T extends Transport>(
     , goerliKey: Hex
     , kettleAddress: Hex) 
 {
-    // swap comments on the following two lines if you want to re-deploy the LimitOrderManager
-    // const intentRouterAddress: Hex = await deployLimitOrderManager(_suaveWallet, suaveProvider)
-    const intentRouterAddress = TestnetConfig.suave.intentRouter as Hex
+    // set DEPLOY=true in process.env if you want to re-deploy the LimitOrderManager
+    // `DEPLOY=true bun run index.ts`
+    const intentRouterAddress = process.env.DEPLOY ?
+        await deployLimitOrderManager(_suaveWallet, suaveProvider) :
+        TestnetConfig.suave.intentRouter as Hex
+
     const goerliWallet = createWalletClient({
         account: privateKeyToAccount(goerliKey),
         transport: http(goerli.rpcUrls.public.http[0]),
@@ -175,13 +178,13 @@ async function testIntents<T extends Transport>(
     const targetBlock = blockNumber + 1n
     console.log("targeting blockNumber", targetBlock)
 
-    // fulfill order
+    // tx params for goerli txs
     const txMeta = new TxMeta()
         .withChainId(goerli.id)
         .withNonce(nonce)
-        .withGas(300000n)
-        .withGasPrice(30000000000n)
+        .withGas(100000n)
     console.log("txMeta", txMeta)
+
     const fulfillIntent = new FulfillIntentRequest({
         orderId: limitOrder.orderId(),
         dataId: dataId,

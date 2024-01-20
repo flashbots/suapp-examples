@@ -29,7 +29,7 @@ export class TxMeta implements ITxMeta {
     chainId: number
     constructor() {
         this.gas = 150000n
-        this.gasPrice = 10000000000n
+        this.gasPrice = 30000000000n
         this.nonce = 0
         this.chainId = 1
     }
@@ -131,7 +131,7 @@ export class FulfillIntentRequest<T extends Transport> implements IFulfillIntent
             confidentialInputs: this.confidentialInputsBytes(),
             kettleAddress: this.kettleAddress,
             gasPrice: feeData.baseFeePerGas[0] || 10000000000n,
-            gas: 3000111n, // weird; this fixes "out of gas" error, but this tx only used 25k gas landed
+            gas: 25000n,
             type: SuaveTxRequestTypes.ConfidentialRequest,
         }
     }
