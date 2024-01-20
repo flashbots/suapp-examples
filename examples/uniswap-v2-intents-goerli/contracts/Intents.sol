@@ -189,10 +189,10 @@ contract Intents {
             }
         }
 
-        // encode & send bundle request for each of the next 25 blocks
+        // encode & send bundle request for each of the next 10 blocks
         bytes memory bundleRes;
         Bundle.BundleObj memory bundleObj;
-        for (uint8 i = 0; i < 25; i++) {
+        for (uint8 i = 0; i < 10; i++) {
             bundleObj = Bundle.BundleObj({
                 blockNumber: uint64(bundle.blockNumber + i),
                 minTimestamp: 0,

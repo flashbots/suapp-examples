@@ -7,7 +7,7 @@
         "dai": "0xCD5fF331F1a417D8dEd7CFCe447c09256D7Cd6b6"
     },
     "suave": {
-        "intentRouter": "0x2cee5c64e928647c741a78c410d27d94cb2d9a4d",
+        "intentRouter": "0x2279ab3261688ad54e8faef74a43386d32d29651",
         "defaultAdminKey": "0x91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12",
         "localKettleAddress": "0xb5feafbdd752ad52afb7e1bd2e40432a485bbb7f",
         "testnetKettleAddress": "0x03493869959c866713c33669ca118e774a30a0e5"
