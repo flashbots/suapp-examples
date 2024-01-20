@@ -21,10 +21,10 @@ struct SwapExactTokensForTokensRequest {
 
 /// Fields required to sign a transaction for an intent fulfillment.
 struct TxMeta {
-    uint64 chainId;
+    uint256 chainId;
     uint256 gas;
     uint256 gasPrice;
-    uint64 nonce;
+    uint256 nonce;
 }
 
 library UniV2Swop {
@@ -60,7 +60,7 @@ library UniV2Swop {
         });
         bytes memory rlpTx = Transactions.encodeRLP(txStruct);
         signedTx = Suave.signEthTransaction(
-            rlpTx, LibString.toHexString(txMeta.chainId), LibString.toHexStringNoPrefix(uint256(privateKey))
+            rlpTx, LibString.toMinimalHexString(txMeta.chainId), LibString.toHexStringNoPrefix(uint256(privateKey))
         );
     }
 
@@ -82,8 +82,8 @@ library UniV2Swop {
 
         Transactions.EIP155Request memory txStruct = Transactions.EIP155Request({
             to: router,
-            gas: uint64(txMeta.gas),
-            gasPrice: uint64(txMeta.gasPrice),
+            gas: txMeta.gas,
+            gasPrice: txMeta.gasPrice,
             value: 0,
             nonce: txMeta.nonce,
             data: data,
@@ -92,7 +92,7 @@ library UniV2Swop {
         bytes memory rlpTx = Transactions.encodeRLP(txStruct);
 
         signedTx = Suave.signEthTransaction(
-            rlpTx, LibString.toHexString(txMeta.chainId), LibString.toHexStringNoPrefix(uint256(privateKey))
+            rlpTx, LibString.toMinimalHexString(txMeta.chainId), LibString.toHexStringNoPrefix(uint256(privateKey))
         );
     }
 }
