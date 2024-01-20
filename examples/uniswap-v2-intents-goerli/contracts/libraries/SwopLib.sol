@@ -7,11 +7,9 @@ WithOut
 Permission
 */
 
-// import {Suave} from "suave/libraries/Suave.sol";
 import {Suave} from "lib/suave-std/src/suavelib/Suave.sol";
 import {Transactions} from "lib/suave-std/src/Transactions.sol";
-import {HexEncoder} from "./HexEncoder.sol";
-// import "lib/suave-std/lib/solady/src/utils/LibString.sol";
+import {LibString} from "lib/suave-std/lib/solady/src/utils/LibString.sol";
 
 struct SwapExactTokensForTokensRequest {
     uint256 amountIn;
@@ -62,7 +60,7 @@ library UniV2Swop {
         });
         bytes memory rlpTx = Transactions.encodeRLP(txStruct);
         signedTx = Suave.signEthTransaction(
-            rlpTx, HexEncoder.toHexString(txMeta.chainId, true, true), HexEncoder.toHexString(privateKey, false)
+            rlpTx, LibString.toHexString(txMeta.chainId), LibString.toHexStringNoPrefix(uint256(privateKey))
         );
     }
 
@@ -81,7 +79,7 @@ library UniV2Swop {
             request.to,
             request.deadline
         );
-        // bytes memory emptyBytes = new bytes(0);
+
         Transactions.EIP155Request memory txStruct = Transactions.EIP155Request({
             to: router,
             gas: uint64(txMeta.gas),
@@ -91,13 +89,10 @@ library UniV2Swop {
             data: data,
             chainId: txMeta.chainId
         });
-        // r: emptyBytes,
-        // s: emptyBytes,
-        // v: emptyBytes
-
         bytes memory rlpTx = Transactions.encodeRLP(txStruct);
+
         signedTx = Suave.signEthTransaction(
-            rlpTx, HexEncoder.toHexString(txMeta.chainId, true, true), HexEncoder.toHexString(privateKey, false)
+            rlpTx, LibString.toHexString(txMeta.chainId), LibString.toHexStringNoPrefix(uint256(privateKey))
         );
     }
 }
