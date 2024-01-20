@@ -15,7 +15,6 @@ import {
 import { SuaveRevert } from './lib/suaveError'
 import { 
     type Hex,
-    type PublicClient,
     type Transport,
     concatHex,
     createPublicClient,
@@ -34,7 +33,6 @@ import { privateKeyToAccount } from 'viem/src/accounts'
 import { Bundle, FulfillIntentRequest, TxMeta } from './lib/intentBundle'
 import TestnetConfig from './rigil.json'
 import config from "./lib/env"
-import { ETH } from './lib/utils'
 
 async function testIntents<T extends Transport>(
     _suaveWallet: SuaveWallet<T>
