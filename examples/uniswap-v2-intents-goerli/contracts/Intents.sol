@@ -201,8 +201,9 @@ contract Intents {
             });
 
             // simulate bundle and revert if it fails
-            uint64 simResult = Suave.simulateBundle(Bundle.encodeBundle(bundleObj).body);
-            require(simResult > 0, LibString.toHexString(abi.encodePacked("bundle sim failed", simResult)));
+            // TODO: once goerli is back in business, re-enable this check
+            // uint64 simResult = Suave.simulateBundle(Bundle.encodeBundle(bundleObj).body);
+            // require(simResult > 0, LibString.toHexString(abi.encodePacked("bundle sim failed", simResult)));
 
             bundleRes = Bundle.sendBundle("https://relay-goerli.flashbots.net", bundleObj);
             require(

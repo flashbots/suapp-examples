@@ -131,7 +131,7 @@ export class FulfillIntentRequest<T extends Transport> implements IFulfillIntent
             confidentialInputs: this.confidentialInputsBytes(),
             kettleAddress: this.kettleAddress,
             gasPrice: feeData.baseFeePerGas[0] || 10000000000n,
-            gas: 25000n,
+            gas: 2500111n,
             type: SuaveTxRequestTypes.ConfidentialRequest,
         }
     }
@@ -166,7 +166,7 @@ export class FulfillIntentRequest<T extends Transport> implements IFulfillIntent
 
     private calldata(): Hex {
         return encodeFunctionData({
-            abi: parseAbi(['function fulfillIntent(bytes32,bytes16,(uint64,uint256,uint256,uint64)) public']),
+            abi: parseAbi(['function fulfillIntent(bytes32,bytes16,(uint256,uint256,uint256,uint256)) public']),
             args: [
                 this.orderId,
                 this.dataId,

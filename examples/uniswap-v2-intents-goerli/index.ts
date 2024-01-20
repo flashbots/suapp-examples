@@ -202,6 +202,9 @@ async function testIntents<T extends Transport>(
     // wait for tx receipt, then log it
     const fulfillIntentReceipt = await suaveProvider.waitForTransactionReceipt({hash: fulfillIntentTxHash})
     console.log("fulfillIntentReceipt", fulfillIntentReceipt)
+    if (fulfillIntentReceipt.logs[0].data === '0x0000000000000000000000000000000000000000000000000000000000009001') {
+        throw new Error("fulfillIntent failed: invalid function signature.")
+    }
 }
 
 async function main() {
