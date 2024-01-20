@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-// import "suave/libraries/Suave.sol";
-// import "suave/standard_peekers/bids.sol";
-// import "./SuaveWallet.sol";
 import {Suave} from "lib/suave-std/src/suavelib/Suave.sol";
 import {Bundle} from "lib/suave-std/src/protocols/Bundle.sol";
 import {Transactions} from "lib/suave-std/src/Transactions.sol";
 import {UniV2Swop, SwapExactTokensForTokensRequest, TxMeta} from "./libraries/SwopLib.sol";
-import {HexEncoder} from "./libraries/HexEncoder.sol";
+import {LibString} from "lib/suave-std/lib/solady/src/utils/LibString.sol";
 
 /// Limit order for a swap. Used as a simple example for intents delivery system.
 struct LimitOrder {
@@ -45,7 +42,7 @@ contract Intents {
 
     event Test(uint64 num);
     event LimitOrderReceived(
-        bytes32 orderId, bytes16 dataId, address tokenIn, address tokenOut, uint256 expiryTimestamp, uint256 random
+        bytes32 orderId, bytes16 dataId, address tokenIn, address tokenOut, uint256 expiryTimestamp
     );
     event IntentFulfilled(bytes32 orderId, uint256 amountOut, bytes bundleRes);
 
@@ -61,29 +58,24 @@ contract Intents {
     }
 
     /// Returns ABI-encoded calldata of `onReceivedIntent(...)`.
-    function encodeOnReceivedIntent(LimitOrderPublic memory order, bytes32 orderId, Suave.DataId dataId, uint256 random)
+    function encodeOnReceivedIntent(LimitOrderPublic memory order, bytes32 orderId, Suave.DataId dataId)
         private
         pure
         returns (bytes memory)
     {
-        return bytes.concat(this.onReceivedIntent.selector, abi.encode(order, orderId, dataId, random));
+        return bytes.concat(this.onReceivedIntent.selector, abi.encode(order, orderId, dataId));
     }
 
     /// Triggered when an intent is successfully received.
     /// Emits an event on SUAVE chain w/ the tokens traded and the order's expiration timestamp.
-    function onReceivedIntent(
-        LimitOrderPublic calldata order,
-        bytes32 orderId,
-        bytes16 dataId,
-        uint256 random // TODO: remove or make use of this param
-    ) public {
+    function onReceivedIntent(LimitOrderPublic calldata order, bytes32 orderId, bytes16 dataId) public {
         // check that this order doesn't already exist; check any value in the struct against 0
         if (intentsPending[orderId].amountIn > 0) {
             revert("intent already exists");
         }
         intentsPending[orderId] = order;
 
-        emit LimitOrderReceived(orderId, dataId, order.tokenIn, order.tokenOut, order.expiryTimestamp, random);
+        emit LimitOrderReceived(orderId, dataId, order.tokenIn, order.tokenOut, order.expiryTimestamp);
     }
 
     /// Broadcast an intent to SUAVE.
@@ -109,19 +101,17 @@ contract Intents {
 
         // save private key & recipient addr to confidential storage
         Suave.DataRecord memory record = Suave.newDataRecord(
-            0, // decryptionCondition: ignored
+            0, // decryptionCondition: ignored for now
             allowedPeekers,
             allowedStores,
-            "limit_key" // dataType: namespace
+            "limit_key" // namespace
         );
-        Suave.confidentialStore(record.id, HexEncoder.toHexString(orderId, true), abi.encode(order.senderKey, order.to));
-
-        // demo: get price from Uniswap
-        uint256 price = UniV2Swop.getAmountOut(1 ether, 100 ether, 42000 ether);
+        Suave.confidentialStore(
+            record.id, LibString.toHexString(uint256(orderId)), abi.encode(order.senderKey, order.to)
+        );
 
         // returns calldata to trigger `onReceivedIntent()`
-        suaveCallData = encodeOnReceivedIntent(publicOrder, orderId, record.id, price);
-        // random
+        suaveCallData = encodeOnReceivedIntent(publicOrder, orderId, record.id);
     }
 
     /// Returns ABI-encoded calldata of `onReceivedIntent(...)`.
@@ -165,7 +155,7 @@ contract Intents {
         require(order.amountIn > 0, "intent not found");
 
         (bytes32 privateKey, address to) =
-            abi.decode(Suave.confidentialRetrieve(dataId, HexEncoder.toHexString(orderId, true)), (bytes32, address));
+            abi.decode(Suave.confidentialRetrieve(dataId, LibString.toHexString(uint256(orderId))), (bytes32, address));
 
         (bytes memory signedApprove,) =
             UniV2Swop.approve(order.tokenIn, UniV2Swop.router, order.amountIn, privateKey, txMeta);
@@ -182,21 +172,10 @@ contract Intents {
         );
 
         // verify amountOutMin using eth_call
-        uint256 amountOut = abi.decode(Suave.ethcall(UniV2Swop.router, swapCallData), (uint256));
-        require(amountOut >= order.amountOutMin, "insufficient output");
-
-        // verify approval using eth_call
-        // bool approved = abi.decode(
-        //     Suave.ethcall(order.tokenIn, approveCallData),
-        //     (bool)
-        // );
-        // require(approved, "approval failed");
-        // Suave.SimulateTransactionResult memory simRes = Suave
-        //     .simulateTransaction(
-        //         HexEncoder.toHexString(orderId),
-        //         signedTx
-        //     );
-        // require(simRes.success, "tx failed");
+        // uint256 amountOut = abi.decode(Suave.ethcall(UniV2Swop.router, swapCallData), (uint256));
+        // require(amountOut >= order.amountOutMin, "insufficient output");
+        // TODO: once goerli is back in business, re-enable this check
+        uint256 amountOut = 1337;
 
         // load bundle from confidentialInputs
         FulfillIntentBundle memory bundle = abi.decode(Suave.confidentialInputs(), (FulfillIntentBundle));
@@ -204,14 +183,13 @@ contract Intents {
         // assemble the full bundle by replacing the bundle entry marked with the placeholder
         for (uint256 i = 0; i < bundle.txs.length; i++) {
             if (bytes2(bundle.txs[i]) == TX_PLACEHOLDER) {
-                // TODO: support multiple txs
                 bundle.txs[i] = signedApprove;
                 bundle.txs[i + 1] = signedSwap;
                 break;
             }
         }
 
-        // encode bundle request
+        // encode & send bundle request for each of the next 25 blocks
         bytes memory bundleRes;
         Bundle.BundleObj memory bundleObj;
         for (uint8 i = 0; i < 25; i++) {
@@ -222,6 +200,10 @@ contract Intents {
                 txns: bundle.txs
             });
 
+            // simulate bundle and revert if it fails
+            uint64 simResult = Suave.simulateBundle(Bundle.encodeBundle(bundleObj).body);
+            require(simResult > 0, LibString.toHexString(abi.encodePacked("bundle sim failed", simResult)));
+
             bundleRes = Bundle.sendBundle("https://relay-goerli.flashbots.net", bundleObj);
             require(
                 // this hex is '{"id":1,"result"'
@@ -230,10 +212,8 @@ contract Intents {
                 "bundle failed"
             );
         }
+        // return the last bundle response
         bundleRes = Bundle.encodeBundle(bundleObj).body;
-
-        // simulate bundle and revert if it fails
-        // require(Suave.simulateBundle(bundleReq) > 0, "bundle sim failed");
 
         // trigger `onFulfilledIntent`
         suaveCallData = encodeOnFulfilledIntent(orderId, amountOut, bundleRes);

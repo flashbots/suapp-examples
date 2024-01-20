@@ -43,15 +43,14 @@ async function testIntents<T extends Transport>(
     , kettleAddress: Hex) 
 {
     // swap comments on the following two lines if you want to re-deploy the LimitOrderManager
-    // const intentRouterAddress = deployLimitOrderManager(suaveWallet, suaveProvider)
-    const intentRouterAddress = TestnetConfig.suave.intentRouter as Hex
-    console.log("intentRouterAddress", intentRouterAddress)
-
+    const intentRouterAddress: Hex = await deployLimitOrderManager(suaveWallet, suaveProvider)
+    // const intentRouterAddress = TestnetConfig.suave.intentRouter as Hex
     const goerliWallet = createWalletClient({
         account: privateKeyToAccount(goerliKey),
         transport: http(goerli.rpcUrls.public.http[0]),
     })
-
+    
+    console.log("intentRouterAddress", intentRouterAddress)
     console.log("suaveWallet", suaveWallet.account.address)
     console.log("goerliWallet", goerliWallet.account.address)
 
@@ -112,7 +111,7 @@ async function testIntents<T extends Transport>(
     }
 
     // check `confidentialComputeResult`; should be calldata for `onReceivedIntent`
-    const fnSelector: Hex = `0x${IntentsContract.methodIdentifiers['onReceivedIntent((address,address,uint256,uint256,uint256),bytes32,bytes16,uint256)']}`
+    const fnSelector: Hex = `0x${IntentsContract.methodIdentifiers['onReceivedIntent((address,address,uint256,uint256,uint256),bytes32,bytes16)']}`
     const expectedData = [
         limitOrder.tokenIn,
         limitOrder.tokenOut,
@@ -148,7 +147,7 @@ async function testIntents<T extends Transport>(
     console.log('intentResult', intentResult)
 
     // get dataId from event logs in receipt
-    const LIMIT_ORDER_RECEIVED_SIG: Hex = getEventSelector('LimitOrderReceived(bytes32,bytes16,address,address,uint256,uint256)')
+    const LIMIT_ORDER_RECEIVED_SIG: Hex = getEventSelector('LimitOrderReceived(bytes32,bytes16,address,address,uint256)')
     const intentReceivedLog = ccrReceipt.logs.find(log => log.topics[0] === LIMIT_ORDER_RECEIVED_SIG)
     if (!intentReceivedLog) {
         throw new Error('no LimitOrderReceived event found in logs')
@@ -204,56 +203,24 @@ async function testIntents<T extends Transport>(
     console.log("fulfillIntentReceipt", fulfillIntentReceipt)
 }
 
-async function getAmountOut(routerAddress: Hex, goerliProvider: PublicClient) {
-    const abiItem = {
-        inputs: [
-            { name: 'amountIn', type: 'uint256' },
-            { name: 'reserveIn', type: 'uint256' },
-            { name: 'reserveOut', type: 'uint256' },
-        ],
-        name: 'getAmountOut',
-        outputs: [{ name: '', type: 'uint256' }],
-        stateMutability: 'view',
-        type: 'function',
-    }
-    const calldata = encodeFunctionData({
-        abi: [abiItem],
-        args: [
-            1n * ETH,
-            100n * ETH,
-            42000n * ETH,
-        ],
-        functionName: 'getAmountOut'
-    })
-    const tx = {
-        to: routerAddress,
-        data: calldata,
-    }
-    return await goerliProvider.call(tx)
-}
-
 async function main() {
-    /* call getAmountOut directly on goerli */
-    const goerliProvider = createPublicClient({
-        transport: http(goerli.rpcUrls.public.http[0]),
-    })
-    const routerAddress = TestnetConfig.goerli.uniV2Router as Hex
-    const goerliAmountOut = await getAmountOut(routerAddress, goerliProvider)
-    console.log("goerliAmountOut", goerliAmountOut)
-
+    // get a suave wallet & provider, connected to rigil testnet
     const suaveWallet = getSuaveWallet({
         privateKey: (config.SUAVE_KEY || TestnetConfig.suave.defaultAdminKey) as Hex,
         transport: http(suaveRigil.rpcUrls.default.http[0]),
     })
     console.log("suaveWallet", suaveWallet.account.address)
-    // connect to rigil testnet
     const suaveProvider = getSuaveProvider(http(suaveRigil.rpcUrls.default.http[0]))
+
+    // goerli signer; separate from suaveWallet; only funded on goerli
     const goerliKEY = (config.GOERLI_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80') as Hex
     const goerliWallet = createWalletClient({
         account: privateKeyToAccount(goerliKEY),
         transport: http(goerli.rpcUrls.public.http[0]),
     })
     console.log("goerliWallet", goerliWallet.account.address)
+
+    // run test script
     await testIntents(suaveWallet, suaveProvider, goerliKEY, TestnetConfig.suave.testnetKettleAddress as Hex)
 }
 
