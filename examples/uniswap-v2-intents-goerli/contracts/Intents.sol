@@ -214,6 +214,9 @@ contract Intents {
             );
         }
 
+        // TODO: build a mechanism to check for inclusion
+        // ... right now we just assume the bundle landed
+
         // trigger `onFulfilledIntent`
         suaveCallData = encodeOnFulfilledIntent(orderId, amountOut, bundleRes);
     }

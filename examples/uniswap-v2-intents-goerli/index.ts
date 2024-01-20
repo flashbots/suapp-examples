@@ -182,7 +182,7 @@ async function testIntents<T extends Transport>(
     const txMeta = new TxMeta()
         .withChainId(goerli.id)
         .withNonce(nonce)
-        .withGas(100000n)
+        .withGas(151000n)
     console.log("txMeta", txMeta)
 
     const fulfillIntent = new FulfillIntentRequest({
@@ -204,6 +204,9 @@ async function testIntents<T extends Transport>(
     console.log("fulfillIntentReceipt", fulfillIntentReceipt)
     if (fulfillIntentReceipt.logs[0].data === '0x0000000000000000000000000000000000000000000000000000000000009001') {
         throw new Error("fulfillIntent failed: invalid function signature.")
+    }
+    if (fulfillIntentReceipt.logs[0].topics[0] !== '0x3b49987fdcb0497128d34095f53200b85e2eacaf3392a811c0133162bbb3a9f4') {
+        throw new Error("fulfillIntent failed: invalid event signature.")
     }
 }
 
