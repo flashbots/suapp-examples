@@ -212,8 +212,6 @@ contract Intents {
                 "bundle failed"
             );
         }
-        // return the last bundle response
-        bundleRes = Bundle.encodeBundle(bundleObj).body;
 
         // trigger `onFulfilledIntent`
         suaveCallData = encodeOnFulfilledIntent(orderId, amountOut, bundleRes);
