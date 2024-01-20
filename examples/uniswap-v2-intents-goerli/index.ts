@@ -37,26 +37,26 @@ import config from "./lib/env"
 import { ETH } from './lib/utils'
 
 async function testIntents<T extends Transport>(
-    suaveWallet: SuaveWallet<T>
+    _suaveWallet: SuaveWallet<T>
     , suaveProvider: SuaveProvider<T>
     , goerliKey: Hex
     , kettleAddress: Hex) 
 {
     // swap comments on the following two lines if you want to re-deploy the LimitOrderManager
-    const intentRouterAddress: Hex = await deployLimitOrderManager(suaveWallet, suaveProvider)
-    // const intentRouterAddress = TestnetConfig.suave.intentRouter as Hex
+    // const intentRouterAddress: Hex = await deployLimitOrderManager(_suaveWallet, suaveProvider)
+    const intentRouterAddress = TestnetConfig.suave.intentRouter as Hex
     const goerliWallet = createWalletClient({
         account: privateKeyToAccount(goerliKey),
         transport: http(goerli.rpcUrls.public.http[0]),
     })
     
     console.log("intentRouterAddress", intentRouterAddress)
-    console.log("suaveWallet", suaveWallet.account.address)
+    console.log("suaveWallet", _suaveWallet.account.address)
     console.log("goerliWallet", goerliWallet.account.address)
 
     // automagically decode revert messages before throwing them
     // TODO: build this natively into the wallet client
-    suaveWallet = suaveWallet.extend((client) => ({
+    const suaveWallet = _suaveWallet.extend((client) => ({
         async sendTransaction(tx: TransactionRequestSuave): Promise<Hex> {
             try {
                 return await client.sendTransaction(tx)
@@ -157,7 +157,7 @@ async function testIntents<T extends Transport>(
         ...intentReceivedLog,
     }).args
     console.log("*** decoded log", decodedLog)
-    const { dataId } = decodedLog as any
+    const { dataId } = decodedLog as { dataId: Hex }
     console.log("dataId", dataId)
     if (!dataId) {
         throw new Error('no dataId found in logs')
