@@ -2,10 +2,11 @@ module github.com/flashbots/suapp-examples
 
 go 1.21.3
 
-replace github.com/ethereum/go-ethereum => github.com/flashbots/suave-geth v0.0.0-20240103141237-95ae32eaaccb
+replace github.com/ethereum/go-ethereum => github.com/flashbots/suave-geth v0.1.1-0.20240116112006-29dd186e4608
 
 require (
 	github.com/ethereum/go-ethereum v0.0.0-00010101000000-000000000000
+	github.com/sethvargo/go-envconfig v1.0.0
 )
 
 require (
