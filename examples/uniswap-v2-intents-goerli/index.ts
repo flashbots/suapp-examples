@@ -205,7 +205,7 @@ async function testIntents<T extends Transport>(
     if (fulfillIntentReceipt.logs[0].data === '0x0000000000000000000000000000000000000000000000000000000000009001') {
         throw new Error("fulfillIntent failed: invalid function signature.")
     }
-    if (fulfillIntentReceipt.logs[0].topics[0] !== '0x3b49987fdcb0497128d34095f53200b85e2eacaf3392a811c0133162bbb3a9f4') {
+    if (fulfillIntentReceipt.logs[0].topics[0] !== '0x6cfef2b359d2bc325989410c5b08045b006cd80ea36a48c332233798808abacb') {
         throw new Error("fulfillIntent failed: invalid event signature.")
     }
 }

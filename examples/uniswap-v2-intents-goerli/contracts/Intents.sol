@@ -34,8 +34,8 @@ struct FulfillIntentBundle {
 }
 
 contract Intents {
-    // we probably shouldn't be storing intents in storage
-    // TODO: make a stateless design
+    // we probably shouldn't be storing intents in contract storage
+    // TODO: make a stateless or ConfidentialStore-based design
     mapping(bytes32 => LimitOrderPublic) public intentsPending;
     string public constant RPC_URL = "https://relay-goerli.flashbots.net";
     bytes2 public constant TX_PLACEHOLDER = 0xf00d;
@@ -44,7 +44,7 @@ contract Intents {
     event LimitOrderReceived(
         bytes32 orderId, bytes16 dataId, address tokenIn, address tokenOut, uint256 expiryTimestamp
     );
-    event IntentFulfilled(bytes32 orderId, uint256 amountOut, bytes bundleRes);
+    event IntentFulfilled(bytes32 orderId, bytes bundleRes);
 
     fallback() external {
         emit Test(0x9001);
@@ -115,18 +115,14 @@ contract Intents {
     }
 
     /// Returns ABI-encoded calldata of `onReceivedIntent(...)`.
-    function encodeOnFulfilledIntent(bytes32 orderId, uint256 amountOut, bytes memory bundleRes)
-        private
-        pure
-        returns (bytes memory)
-    {
-        return bytes.concat(this.onFulfilledIntent.selector, abi.encode(orderId, amountOut, bundleRes));
+    function encodeOnFulfilledIntent(bytes32 orderId, bytes memory bundleRes) private pure returns (bytes memory) {
+        return bytes.concat(this.onFulfilledIntent.selector, abi.encode(orderId, bundleRes));
     }
 
     /// Triggered when an intent is fulfilled via `fulfillIntent`.
-    function onFulfilledIntent(bytes32 orderId, uint256 amountOut, bytes memory bundleRes) public {
+    function onFulfilledIntent(bytes32 orderId, bytes memory bundleRes) public {
         delete intentsPending[orderId];
-        emit IntentFulfilled(orderId, amountOut, bundleRes);
+        emit IntentFulfilled(orderId, bundleRes);
     }
 
     /// Fulfill an intent.
@@ -165,17 +161,11 @@ contract Intents {
         address[] memory path = new address[](2);
         path[0] = order.tokenIn;
         path[1] = order.tokenOut;
-        (bytes memory signedSwap, bytes memory swapCallData) = UniV2Swop.swapExactTokensForTokens(
+        (bytes memory signedSwap,) = UniV2Swop.swapExactTokensForTokens(
             SwapExactTokensForTokensRequest(order.amountIn, order.amountOutMin, path, to, order.expiryTimestamp),
             privateKey,
             txMeta
         );
-
-        // verify amountOutMin using eth_call
-        // uint256 amountOut = abi.decode(Suave.ethcall(UniV2Swop.router, swapCallData), (uint256));
-        // require(amountOut >= order.amountOutMin, "insufficient output");
-        // TODO: once goerli is back in business, re-enable this check
-        uint256 amountOut = 1337;
 
         // load bundle from confidentialInputs
         FulfillIntentBundle memory bundle = abi.decode(Suave.confidentialInputs(), (FulfillIntentBundle));
@@ -201,9 +191,8 @@ contract Intents {
             });
 
             // simulate bundle and revert if it fails
-            // TODO: once goerli is back in business, re-enable this check
-            // uint64 simResult = Suave.simulateBundle(Bundle.encodeBundle(bundleObj).body);
-            // require(simResult > 0, LibString.toHexString(abi.encodePacked("bundle sim failed", simResult)));
+            uint64 simResult = Suave.simulateBundle(Bundle.encodeBundle(bundleObj).body);
+            require(simResult == 0, "sim failed");
 
             bundleRes = Bundle.sendBundle("https://relay-goerli.flashbots.net", bundleObj);
             require(
@@ -218,6 +207,6 @@ contract Intents {
         // ... right now we just assume the bundle landed
 
         // trigger `onFulfilledIntent`
-        suaveCallData = encodeOnFulfilledIntent(orderId, amountOut, bundleRes);
+        suaveCallData = encodeOnFulfilledIntent(orderId, bundleRes);
     }
 }
