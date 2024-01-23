@@ -72,6 +72,9 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
+      - name: Install contract dependencies
+        run: forge install
+
       - name: Build the contracts
         run: forge build
 

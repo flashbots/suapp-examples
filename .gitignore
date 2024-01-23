@@ -1,4 +1,8 @@
 .DS_Store
 out/
 cache/
-.env
+
+# dotenv
+**/.env
+**/.env.*
+!**/.env.example

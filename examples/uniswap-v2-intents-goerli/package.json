@@ -1,0 +1,19 @@
+{
+  "name": "uniswap-v2-intents-goerli",
+  "module": "index.ts",
+  "devDependencies": {
+    "@scure/bip32": "^1.3.3",
+    "@scure/bip39": "^1.2.2",
+    "@types/bun": "latest",
+    "abitype": "^1.0.0",
+    "isomorphic-ws": "^5.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "viem": "https://github.com/flashbots/suave-viem.git#590b1a7a66b1232b9a6238f87835fff9c3e8d3c1"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "type": "module"
+}
