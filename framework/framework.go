@@ -150,6 +150,7 @@ func (c *Contract) SendTransaction(method string, args []interface{}, confidenti
 	if err != nil {
 		// decode the PeekerReverted error
 		errMsg := err.Error()
+		fmt.Println(errMsg)
 		if strings.HasPrefix(errMsg, executionRevertedPrefix) {
 			errMsg = errMsg[len(executionRevertedPrefix):]
 			errMsgBytes, _ := hex.DecodeString(errMsg)
@@ -189,7 +190,7 @@ type Config struct {
 	// This account is funded in your local L1 devnet
 	FundedAccount *PrivKey `env:"KETTLE_PRIVKEY, default=91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"`
 
-	L1RPC string `env:"L1_RPC, default=http://localhost:8555"`
+	L1RPC string `env:"L1_RPC, default=http://localhost:8545"`
 
 	// This account is funded in your local SUAVE devnet
 	// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
@@ -311,7 +312,7 @@ func (c *Chain) FundAccount(to common.Address, value *big.Int) error {
 	// check balance
 	balance, err = c.clt.RPC().BalanceAt(context.Background(), to, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("framework error: %w", err)
 	}
 	if balance.Cmp(value) != 0 {
 		return errFundAccount

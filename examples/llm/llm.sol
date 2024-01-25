@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.8;
 
-import "suave-std/suavelib/Suave.sol";
+// import "suave-std/suavelib/Suave.sol";
 
 contract LLM {
     uint256 public gameFee = 0.01 ether;
@@ -11,6 +11,7 @@ contract LLM {
         owner = msg.sender;
     }
 
+    // TODO: Make this fully offchain by putting string in confidential inputs
     function submitPromptOffchain(string memory prompt) public payable returns (bytes memory) {
         require(msg.value >= gameFee, "Insufficient fee for prompt submission");
 
@@ -45,7 +46,7 @@ contract LLM {
     }
 
     // WARNING : NOT SAFE
-    function callLLM(string memory prompt) private pure returns (address) {
+    function callLLM(string memory prompt) public returns (address) {
         return address(0);
     }
 }
