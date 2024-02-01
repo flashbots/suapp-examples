@@ -202,7 +202,10 @@ func New() *Framework {
 		log.Fatal(err)
 	}
 
-	kettleRPC, _ := rpc.Dial(config.KettleRPC)
+	kettleRPC, err := rpc.Dial(config.KettleRPC)
+	if err != nil {
+		panic(err)
+	}
 
 	var accounts []common.Address
 	if err := kettleRPC.Call(&accounts, "eth_kettleAddress"); err != nil {
@@ -211,7 +214,10 @@ func New() *Framework {
 
 	suaveClt := sdk.NewClient(kettleRPC, config.FundedAccount.Priv, accounts[0])
 
-	l1RPC, _ := rpc.Dial(config.L1RPC)
+	l1RPC, err := rpc.Dial(config.L1RPC)
+	if err != nil {
+		panic(err)
+	}
 	l1Clt := sdk.NewClient(l1RPC, config.FundedAccountL1.Priv, common.Address{})
 
 	return &Framework{
@@ -263,11 +269,6 @@ func (c *Contract) Ref(acct *PrivKey) *Contract {
 		Contract: sdk.GetContract(c.addr, c.abi, clt),
 	}
 	return cc
-}
-
-func (f *Framework) NewClient(acct *PrivKey) *sdk.Client {
-	rpc, _ := rpc.Dial(f.config.KettleRPC)
-	return sdk.NewClient(rpc, acct.Priv, f.kettleAddress)
 }
 
 func (c *Chain) SignTx(priv *PrivKey, tx *types.LegacyTx) (*types.Transaction, error) {
