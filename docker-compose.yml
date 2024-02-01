@@ -26,6 +26,7 @@ services:
       - --keystore=/keystore/keystore
       - --unlock=0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F
       - --password=/keystore/password.txt
+      - --allow-insecure-unlock
     volumes:
       - ./suave-enabled-node-keystore:/keystore
     ports:
