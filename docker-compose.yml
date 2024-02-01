@@ -3,9 +3,6 @@ version: "3.8"
 services:
   suave-mevm:
     image: flashbots/suave-geth:latest
-    environment:
-      - KETTLE_RPC=http://localhost:8545
-      - L1_RPC=http://suave-enabled-chain:8555
     command:
       - --suave.dev
       - --http.addr=0.0.0.0
