@@ -271,15 +271,6 @@ func (c *Contract) Ref(acct *PrivKey) *Contract {
 	return cc
 }
 
-// func (f *Framework) NewClient(acct *PrivKey) *sdk.Client {
-// 	rpc, err := rpc.Dial(f.config.KettleRPC)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	return sdk.NewClient(rpc, acct.Priv, f.kettleAddress)
-// }
-
 func (c *Chain) SignTx(priv *PrivKey, tx *types.LegacyTx) (*types.Transaction, error) {
 	cltAcct1 := sdk.NewClient(c.rpc, priv.Priv, common.Address{})
 	signedTxn, err := cltAcct1.SignTxn(tx)
