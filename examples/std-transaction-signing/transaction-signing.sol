@@ -2,7 +2,6 @@ pragma solidity ^0.8.8;
 
 import "suave-std/suavelib/Suave.sol";
 import "suave-std/Transactions.sol";
-import "forge-std/console2.sol";
 
 contract TransactionSigning {
     using Transactions for *;
