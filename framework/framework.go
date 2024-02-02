@@ -113,11 +113,11 @@ type Contract struct {
 	kettleAddr common.Address
 
 	addr common.Address
-	abi  *abi.ABI
+	Abi  *abi.ABI
 }
 
 func (c *Contract) Call(methodName string) []interface{} {
-	input, err := c.abi.Pack(methodName)
+	input, err := c.Abi.Pack(methodName)
 	if err != nil {
 		panic(err)
 	}
@@ -131,7 +131,7 @@ func (c *Contract) Call(methodName string) []interface{} {
 		panic(err)
 	}
 
-	results, err := c.abi.Methods[methodName].Outputs.Unpack(output)
+	results, err := c.Abi.Methods[methodName].Outputs.Unpack(output)
 	if err != nil {
 		panic(err)
 	}
@@ -251,7 +251,7 @@ func (c *Chain) DeployContract(path string) *Contract {
 	log.Printf("deployed contract at %s", receipt.ContractAddress.Hex())
 
 	contract := sdk.GetContract(receipt.ContractAddress, artifact.Abi, c.clt)
-	return &Contract{addr: receipt.ContractAddress, clt: c.clt, kettleAddr: c.kettleAddr, abi: artifact.Abi, Contract: contract}
+	return &Contract{addr: receipt.ContractAddress, clt: c.clt, kettleAddr: c.kettleAddr, Abi: artifact.Abi, Contract: contract}
 }
 
 func (c *Contract) Ref(acct *PrivKey) *Contract {
@@ -259,8 +259,8 @@ func (c *Contract) Ref(acct *PrivKey) *Contract {
 
 	cc := &Contract{
 		addr:     c.addr,
-		abi:      c.abi,
-		Contract: sdk.GetContract(c.addr, c.abi, clt),
+		Abi:      c.Abi,
+		Contract: sdk.GetContract(c.addr, c.Abi, clt),
 	}
 	return cc
 }
