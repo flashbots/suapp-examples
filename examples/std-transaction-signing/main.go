@@ -15,7 +15,10 @@ func main() {
 	receipt := contract.SendTransaction("example", nil, []byte(priv))
 
 	// validate the signature
-	txnSignatureEvent, _ := contract.Abi.Events["TxnSignature"].ParseLog(receipt.Logs[0])
+	txnSignatureEvent, err := contract.Abi.Events["TxnSignature"].ParseLog(receipt.Logs[0])
+	if err != nil {
+		log.Fatal(err)
+	}
 	var r, s = txnSignatureEvent["r"].([32]byte), txnSignatureEvent["s"].([32]byte)
 
 	if hex.EncodeToString(r[:]) != "eebcfac0def6db5649d0ae6b52ed3b8ba1f5c6c428588df125461113ba8c6749" {
