@@ -56,17 +56,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	targeAddr := testAddr1.Address()
+	targetAddr := testAddr1.Address()
 
 	ethTxn1, _ := fr.L1.SignTx(testAddr1, &types.LegacyTx{
-		To:       &targeAddr,
+		To:       &targetAddr,
 		Value:    big.NewInt(1000),
 		Gas:      21000,
 		GasPrice: big.NewInt(670189871),
 	})
 
 	ethTxnBackrun, _ := fr.L1.SignTx(testAddr2, &types.LegacyTx{
-		To:       &targeAddr,
+		To:       &targetAddr,
 		Value:    big.NewInt(1000),
 		Gas:      21420,
 		GasPrice: big.NewInt(670189871),

@@ -26,9 +26,25 @@ fmt:
 .PHONY: lt
 lt: lint test
 
+.PHONY: devnet-up
+devnet-up:
+	@kurtosis run \
+			--enclave eth-devnet \
+		../kurtosis-ethereum-package "$$( cat ./devnet/kurtosis.yaml )"
+	@kurtosis service stop eth-devnet mev-flood
+	@docker compose --file ./devnet/docker-compose.yaml up --detach
+
+.PHONY: devnet-down
+devnet-down:
+	@docker compose --file ./devnet/docker-compose.yaml down
+	@docker volume rm e2e_suave-blockscout-db-data || true
+	@kurtosis enclave stop eth-devnet
+	@kurtosis enclave rm eth-devnet
+	@kurtosis engine stop
+
 .PHONY: run-integration
 run-integration:
-	go run examples/mevm-confidential-store/main.go 
-	go run examples/mevm-is-confidential/main.go 
-	go run examples/onchain-callback/main.go 
+	go run examples/mevm-confidential-store/main.go
+	go run examples/mevm-is-confidential/main.go
+	go run examples/onchain-callback/main.go
 	go run examples/onchain-state/main.go
