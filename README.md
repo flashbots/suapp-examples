@@ -55,10 +55,7 @@ forge build
    - [Docker](https://docs.docker.com/engine/install/)
    - [Kurtosis](https://docs.kurtosis.com/install/)
 
-2. Clone customised [kurtosis ethereum package](https://github.com/flashbots/kurtosis-ethereum-package)
-   into the adjacent directory (`../kurtosis-ethereum-package`).
-
-3. Run
+2. Run
 
     ```bash
     # Launch kurtosis devnet + sidecar docker-compose with SUAVE
@@ -76,14 +73,15 @@ forge build
     ```
 
 >
-> Notes:
+> **Notes:**
 >
 > 1. If you are Mac OS user, you might want to consider using
 >    [OrbStack](https://orbstack.dev/) instead of Docker Desktop.
 >
 > 2. Some of the tests (`app-ofa-private`, for example) will need Eth
 >    devnet to progress beyond dencun fork.  Wait out ~5m after the
->    start before running them.
+>    start before running them (roughly slot 128).
+>
 
 ### Details
 
