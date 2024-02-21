@@ -6,7 +6,7 @@ import "suave-std/suavelib/Suave.sol";
 contract Builder {
     function callback() external payable {}
 
-    function example() external payable returns (bytes memory) {
+    function example(uint64 decryptionCondition) external payable returns (bytes memory) {
         // address[] memory allowedList = new address[](1);
         // allowedList[0] = address(this);
 
