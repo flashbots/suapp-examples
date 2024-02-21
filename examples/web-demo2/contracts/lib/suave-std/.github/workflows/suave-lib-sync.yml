@@ -1,0 +1,80 @@
+name: SuaveLib sync
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [suavelib-sync]
+
+permissions:
+  pull-requests: write
+  issues: write
+  repository-projects: write
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log Dispatch Information
+        if: ${{ github.event_name == 'repository_dispatch' }}
+        run: |
+          echo "this run was triggered by dispatch from repo: flashbots/suave-geth"
+          echo "ref: ${{ github.event.client_payload.ref }}"
+          echo "sha: ${{ github.event.client_payload.sha }}"
+          echo "run: ${{ github.event.client_payload.run }}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ^1.21
+
+      - name: Checkout tools repo
+        uses: actions/checkout@v4
+        with:
+          repository: flashbots/suave-geth
+          path: suave-geth
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Get Commit ID
+        id: get_commit_id
+        run: |
+          cd suave-geth
+          commit_id=$(git rev-parse HEAD)
+          echo "commit_ref=https://github.com/flashbots/suave-geth/commit/$commit_id" >> $GITHUB_OUTPUT
+
+      - name: Mirror
+        run: |
+          cp suave-geth/suave/sol/libraries/Suave.sol ./src/suavelib/Suave.sol
+          git add ./src/suavelib/Suave.sol
+          rm -rf suave-geth
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Regenerate Forge registry
+        run: |
+          forge build
+          go run ./tools/forge-gen/main.go --apply
+          git add ./src/forge/Registry.sol
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          title: "Update Suave library"
+          delete-branch: true
+          commit-message: Update Suave.sol library to ${{ steps.get_commit_id.outputs.commit_ref }}
+          branch: bot/suave-lib-update
+          labels: |
+            suave-lib-update
+            automated pr
+          body: |
+            Update Suave.sol library to ${{ steps.get_commit_id.outputs.commit_ref }}

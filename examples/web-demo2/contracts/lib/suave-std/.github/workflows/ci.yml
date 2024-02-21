@@ -1,0 +1,35 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  run-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install suave-geth
+        uses: flashbots/suave-toolchain@v0.1
+
+      - name: Run suave
+        run: |
+          suave-geth --suave.dev --suave.eth.external-whitelist='*' &
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install deps
+        run: forge install
+
+      - name: Run tests
+        env:
+          CHATGPT_API_KEY: ${{ secrets.CHATGPT_API_KEY }}
+        run: forge test --ffi
