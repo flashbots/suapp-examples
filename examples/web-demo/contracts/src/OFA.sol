@@ -30,24 +30,14 @@ contract OFAPrivate {
 
         // Extract a hint about this bundle that is going to be leaked
         // to external applications.
-        bytes memory extractHintPayload = abi.encodePacked(
-            '{"revertingHashes": [], "txs": ['
-        );
+        bytes memory extractHintPayload = abi.encodePacked('{"revertingHashes": [], "txs": [');
         for (uint256 i = 0; i < bundle.txns.length; i++) {
-            extractHintPayload = abi.encodePacked(
-                extractHintPayload,
-                '"',
-                LibString.toHexString(bundle.txns[i]),
-                '"'
-            );
+            extractHintPayload = abi.encodePacked(extractHintPayload, '"', LibString.toHexString(bundle.txns[i]), '"');
             if (i < bundle.txns.length - 1) {
                 extractHintPayload = abi.encodePacked(extractHintPayload, ",");
             }
         }
-        extractHintPayload = abi.encodePacked(
-            extractHintPayload,
-            ']}'
-        );
+        extractHintPayload = abi.encodePacked(extractHintPayload, "]}");
         bytes memory hint = Suave.extractHint(extractHintPayload);
 
         address[] memory allowedList = new address[](2);
