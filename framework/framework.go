@@ -177,7 +177,7 @@ func (c *Contract) SendTransaction(method string, args []interface{}, confidenti
 
 type Framework struct {
 	config        *Config
-	kettleAddress common.Address
+	KettleAddress common.Address
 
 	Suave *Chain
 	L1    *Chain
@@ -222,7 +222,7 @@ func New() *Framework {
 
 	return &Framework{
 		config:        &config,
-		kettleAddress: accounts[0],
+		KettleAddress: accounts[0],
 		Suave:         &Chain{rpc: kettleRPC, clt: suaveClt, kettleAddr: accounts[0]},
 		L1:            &Chain{rpc: l1RPC, clt: l1Clt},
 	}
