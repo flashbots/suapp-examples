@@ -187,13 +187,13 @@ type Config struct {
 	KettleRPC string `env:"KETTLE_RPC, default=http://localhost:8545"`
 
 	// This account is funded in your local L1 devnet
-	FundedAccount *PrivKey `env:"KETTLE_PRIVKEY, default=91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"`
+	FundedAccount *PrivKey `env:"KETTLE_PRIVKEY, default=6c45335a22461ccdb978b78ab61b238bad2fae4544fb55c14eb096c875ccfc52"`
 
 	L1RPC string `env:"L1_RPC, default=http://localhost:8555"`
 
 	// This account is funded in your local SUAVE devnet
 	// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
-	FundedAccountL1 *PrivKey `env:"L1_PRIVKEY, default=91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"`
+	FundedAccountL1 *PrivKey `env:"L1_PRIVKEY, default=6c45335a22461ccdb978b78ab61b238bad2fae4544fb55c14eb096c875ccfc52"`
 }
 
 func New() *Framework {

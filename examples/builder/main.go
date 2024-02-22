@@ -2,21 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/suave/sdk"
 
 	"github.com/flashbots/suapp-examples/framework"
-)
-
-var (
-	BundleContract = mustReadArtifact("builder.sol/BundleContract.json")
-	// EthBundleSenderContract = mustReadArtifact("builder.sol/EthBundleSenderContract.json")
-	BuildEthBlockContract = mustReadArtifact("builder.sol/EthBlockContract.json")
-	// EthBlockBidSenderContract = mustReadArtifact("builder.sol/EthBlockBidSenderContract.json")
 )
 
 var (
@@ -48,26 +41,40 @@ var (
 func main() {
 	fr := framework.New()
 
-	clt := sdk.NewClient(fr.Suave.RPC().Client(), testKey, fr.KettleAddress)
-	_ = fr.Suave.DeployContract("builder.sol/BundleContract.json")
-	_ = fr.Suave.DeployContract("builder.sol/EthBlockContract.json")
-	// _ = fr.Suave.DeployContract("builder.sol/EthBundleSenderContract.json")
-	// _ = fr.Suave.DeployContract("builder.sol/EthBlockBidSenderContract.json")
+	testAddr1 := framework.GeneratePrivKey()
+	log.Printf("Test address 1: %s", testAddr1.Address().Hex())
 
-	bundleBytes := mustCreateBundlePayload(clt)
+	fundBalance := big.NewInt(100000000000000000)
+	maybe(fr.L1.FundAccount(testAddr1.Address(), fundBalance))
+
+	targeAddr := testAddr1.Address()
+	tx, err := fr.L1.SignTx(testAddr1, &types.LegacyTx{
+		To:       &targeAddr,
+		Value:    big.NewInt(1000),
+		Gas:      21000,
+		GasPrice: big.NewInt(670189871),
+	})
+	maybe(err)
+
+	bundle := &types.SBundle{
+		Txs:             types.Transactions{tx},
+		RevertingHashes: []common.Hash{},
+	}
+	bundleBytes, err := json.Marshal(bundle)
+	maybe(err)
+
+	bundleContract := fr.Suave.DeployContract("builder.sol/BundleContract.json")
+	// buildEthBlockContract := fr.Suave.DeployContract("builder.sol/BuildEthBlockContract.json")
 
 	targetBlock := uint64(1)
 
 	{ // Send a bundle record
-		allowedPeekers := []common.Address{newBlockBidAddress, newBundleBidAddress, buildEthBlockAddress}
+		allowedPeekers := []common.Address{newBlockBidAddress, newBundleBidAddress, buildEthBlockAddress, bundleContract.Address()}
 
-		confidentialDataBytes, err := BundleContract.Abi.Methods["fetchConfidentialBundleData"].Outputs.Pack(bundleBytes)
+		confidentialDataBytes, err := bundleContract.Abi.Methods["fetchConfidentialBundleData"].Outputs.Pack(bundleBytes)
 		maybe(err)
 
-		BundleContractI := sdk.GetContract(newBundleBidAddress, BundleContract.Abi, clt)
-
-		_, err = BundleContractI.SendTransaction("newBundle", []interface{}{targetBlock + 1, allowedPeekers, []common.Address{}}, confidentialDataBytes) // XXX:  @ferran
-		maybe(err)
+		_ = bundleContract.SendTransaction("newBundle", []interface{}{targetBlock + 1, allowedPeekers, []common.Address{}}, confidentialDataBytes)
 	}
 
 	// block := fr.suethSrv.ProgressChain()
@@ -84,48 +91,16 @@ func main() {
 	// 		FeeRecipient:   common.Address{0x42},
 	// 	}
 
-	// 	BuildEthBlockContractI := sdk.GetContract(newBlockBidAddress, BuildEthBlockContract.Abi, Elt)
+	// 	BuildEthBlockContractI := sdk.GetContract(newBlockBidAddress, buildEthBlockContract.Abi, Elt)
 
 	// 	_, err = BuildEthBlockContractI.SendTransaction("buildFromPool", []interface{}{payloadArgsTuple, targetBlock + 1}, nil)
-	// 	maybe(Err)
+	// 	maybe(err)
 
 	// 	block = fr.suethSrv.ProgressChain()
 	// 	if size := len(block.Transactions()); size != 1 {
 	// 		panic(fmt.Sprintf("expected block of length 1, got %d", size))
 	// 	}
 	// }
-}
-
-func mustCreateBundlePayload(clt *sdk.Client) []byte {
-	tx := mustSignTx(clt)
-
-	bundle := &types.SBundle{
-		Txs:             types.Transactions{tx},
-		RevertingHashes: []common.Hash{},
-	}
-	b, err := json.Marshal(bundle)
-	maybe(err)
-
-	return b
-}
-
-func mustSignTx(clt *sdk.Client) *types.Transaction {
-	tx, err := clt.SignTxn(&types.LegacyTx{
-		Nonce:    0,
-		To:       &testAddr,
-		Value:    big.NewInt(1000),
-		Gas:      21000,
-		GasPrice: big.NewInt(13),
-		Data:     []byte{},
-	})
-	maybe(err)
-	return tx
-}
-
-func mustReadArtifact(name string) *framework.Artifact {
-	a, err := framework.ReadArtifact(name)
-	maybe(err)
-	return a
 }
 
 func maybe(err error) {
