@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"math/big"
@@ -69,7 +68,7 @@ func main() {
 	targetBlock := uint64(1)
 
 	{ // Send a bundle record
-		allowedPeekers := []common.Address{newBlockBidAddress, newBundleBidAddress, buildEthBlockAddress, bundleContract.Address()}
+		allowedPeekers := []common.Address{newBlockBidAddress, newBundleBidAddress, buildEthBlockAddress, bundleContract.Address(), ethBlockContract.Address()}
 
 		confidentialDataBytes, err := bundleContract.Abi.Methods["fetchConfidentialBundleData"].Outputs.Pack(bundleBytes)
 		maybe(err)
@@ -77,29 +76,19 @@ func main() {
 		_ = bundleContract.SendTransaction("newBundle", []interface{}{targetBlock + 1, allowedPeekers, []common.Address{}}, confidentialDataBytes)
 	}
 
-	// block := fr.suethSrv.ProgressChain()
-	// if size := len(block.Transactions()); size != 1 {
-	// 	panic(fmt.Sprintf("expected block of length 1, got %d", size))
+	// {
+	// 	ethHead, err := fr.L1.RPC().BlockNumber(context.TODO())
+	// 	maybe(err)
+
+	// 	payloadArgsTuple := types.BuildBlockArgs{
+	// 		ProposerPubkey: []byte{0x42},
+	// 		Timestamp:      ethHead + uint64(12),
+	// 		FeeRecipient:   common.Address{0x42},
+	// 	}
+
+	// 	_ = ethBlockContract.SendTransaction("buildFromPool", []interface{}{payloadArgsTuple, targetBlock + 1}, nil)
+	// 	maybe(err)
 	// }
-
-	{
-		ethHead, err := fr.L1.RPC().BlockNumber(context.TODO())
-		maybe(err)
-
-		payloadArgsTuple := types.BuildBlockArgs{
-			ProposerPubkey: []byte{0x42},
-			Timestamp:      ethHead + uint64(12),
-			FeeRecipient:   common.Address{0x42},
-		}
-
-		_ = ethBlockContract.SendTransaction("buildFromPool", []interface{}{payloadArgsTuple, targetBlock + 1}, nil)
-		maybe(err)
-
-		// block = fr.suethSrv.ProgressChain()
-		// if size := len(block.Transactions()); size != 1 {
-		// 	panic(fmt.Sprintf("expected block of length 1, got %d", size))
-		// }
-	}
 }
 
 func maybe(err error) {
