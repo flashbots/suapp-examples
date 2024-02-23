@@ -1,23 +1,23 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/flashbots/suapp-examples/framework"
 )
 
 var (
-	// testKey is a private key to use for funding a tester account.
-	testKey, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	// // testKey is a private key to use for funding a tester account.
+	// testKey, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 
-	// testAddr is the Ethereum address of the tester account.
-	testAddr = crypto.PubkeyToAddress(testKey.PublicKey)
+	// // testAddr is the Ethereum address of the tester account.
+	// testAddr = crypto.PubkeyToAddress(testKey.PublicKey)
 
 	/* precompiles */
 	// isConfidentialAddress     = common.HexToAddress("0x42010000")
@@ -64,7 +64,7 @@ func main() {
 	maybe(err)
 
 	bundleContract := fr.Suave.DeployContract("builder.sol/BundleContract.json")
-	// buildEthBlockContract := fr.Suave.DeployContract("builder.sol/BuildEthBlockContract.json")
+	ethBlockContract := fr.Suave.DeployContract("builder.sol/EthBlockContract.json")
 
 	targetBlock := uint64(1)
 
@@ -82,25 +82,24 @@ func main() {
 	// 	panic(fmt.Sprintf("expected block of length 1, got %d", size))
 	// }
 
-	// {
-	// 	ethHead := fr.ethSrv.CurrentBlock()
+	{
+		ethHead, err := fr.L1.RPC().BlockNumber(context.TODO())
+		maybe(err)
 
-	// 	payloadArgsTuple := types.BuildBlockArgs{
-	// 		ProposerPubkey: []byte{0x42},
-	// 		Timestamp:      ethHead.Time + uint64(12),
-	// 		FeeRecipient:   common.Address{0x42},
-	// 	}
+		payloadArgsTuple := types.BuildBlockArgs{
+			ProposerPubkey: []byte{0x42},
+			Timestamp:      ethHead + uint64(12),
+			FeeRecipient:   common.Address{0x42},
+		}
 
-	// 	BuildEthBlockContractI := sdk.GetContract(newBlockBidAddress, buildEthBlockContract.Abi, Elt)
+		_ = ethBlockContract.SendTransaction("buildFromPool", []interface{}{payloadArgsTuple, targetBlock + 1}, nil)
+		maybe(err)
 
-	// 	_, err = BuildEthBlockContractI.SendTransaction("buildFromPool", []interface{}{payloadArgsTuple, targetBlock + 1}, nil)
-	// 	maybe(err)
-
-	// 	block = fr.suethSrv.ProgressChain()
-	// 	if size := len(block.Transactions()); size != 1 {
-	// 		panic(fmt.Sprintf("expected block of length 1, got %d", size))
-	// 	}
-	// }
+		// block = fr.suethSrv.ProgressChain()
+		// if size := len(block.Transactions()); size != 1 {
+		// 	panic(fmt.Sprintf("expected block of length 1, got %d", size))
+		// }
+	}
 }
 
 func maybe(err error) {
