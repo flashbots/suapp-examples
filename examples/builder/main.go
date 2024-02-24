@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"math/big"
@@ -12,29 +13,12 @@ import (
 )
 
 var (
-	// // testKey is a private key to use for funding a tester account.
-	// testKey, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-
-	// // testAddr is the Ethereum address of the tester account.
-	// testAddr = crypto.PubkeyToAddress(testKey.PublicKey)
-
-	/* precompiles */
-	// isConfidentialAddress     = common.HexToAddress("0x42010000")
-	// fetchBidsAddress          = common.HexToAddress("0x42030001")
-	// fillMevShareBundleAddress = common.HexToAddress("0x43200001")
-
-	// signEthTransaction = common.HexToAddress("0x40100001")
-	// signMessage        = common.HexToAddress("0x40100003")
-
-	// simulateBundleAddress = common.HexToAddress("0x42100000")
+	// precompiles
 	buildEthBlockAddress = common.HexToAddress("0x42100001")
 
-	// privateKeyGen = common.HexToAddress("0x53200003")
-
-	/* contracts */
+	// contracts
 	newBundleBidAddress = common.HexToAddress("0x642300000")
 	newBlockBidAddress  = common.HexToAddress("0x642310000")
-	// mevShareAddress     = common.HexToAddress("0x642100073")
 )
 
 func main() {
@@ -65,7 +49,8 @@ func main() {
 	bundleContract := fr.Suave.DeployContract("builder.sol/BundleContract.json")
 	ethBlockContract := fr.Suave.DeployContract("builder.sol/EthBlockContract.json")
 
-	targetBlock := uint64(1)
+	targetBlock := currentBlock(fr).Time()
+
 	{ // Send a bundle to the builder
 		decryptionCondition := targetBlock + 1
 		allowedPeekers := []common.Address{
@@ -73,7 +58,7 @@ func main() {
 			newBundleBidAddress,
 			buildEthBlockAddress,
 			bundleContract.Address(),
-			ethBlockContract.Address()} // XXX:  added this in response to initial error
+			ethBlockContract.Address()}
 		allowedStores := []common.Address{}
 		newBundleArgs := []any{
 			decryptionCondition,
@@ -86,19 +71,24 @@ func main() {
 		_ = bundleContract.SendTransaction("newBundle", newBundleArgs, confidentialDataBytes)
 	}
 
-	// { // Signal to the builder that it's time to build a new block
-	// 	ethHead, err := fr.L1.RPC().BlockNumber(context.TODO())
-	// 	maybe(err)
+	{ // Signal to the builder that it's time to build a new block
+		payloadArgsTuple := types.BuildBlockArgs{
+			ProposerPubkey: []byte{0x42},
+			Timestamp:      targetBlock + 12, //  ethHead + uint64(12),
+			FeeRecipient:   common.Address{0x42},
+		}
 
-	// 	payloadArgsTuple := types.BuildBlockArgs{
-	// 		ProposerPubkey: []byte{0x42},
-	// 		Timestamp:      ethHead + uint64(12),
-	// 		FeeRecipient:   common.Address{0x42},
-	// 	}
+		_ = ethBlockContract.SendTransaction("buildFromPool", []any{payloadArgsTuple, targetBlock + 1}, nil)
+		maybe(err)
+	}
+}
 
-	// 	_ = ethBlockContract.SendTransaction("buildFromPool", []any{payloadArgsTuple, targetBlock + 1}, nil)
-	// 	maybe(err)
-	// }
+func currentBlock(fr *framework.Framework) *types.Block {
+	n, err := fr.L1.RPC().BlockNumber(context.TODO())
+	maybe(err)
+	b, err := fr.L1.RPC().BlockByNumber(context.TODO(), new(big.Int).SetUint64(n))
+	maybe(err)
+	return b
 }
 
 func maybe(err error) {
