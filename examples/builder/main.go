@@ -51,7 +51,7 @@ func main() {
 		To:       &targeAddr,
 		Value:    big.NewInt(1000),
 		Gas:      21000,
-		GasPrice: big.NewInt(670189871),
+		GasPrice: big.NewInt(6701898710),
 	})
 	maybe(err)
 
@@ -66,17 +66,27 @@ func main() {
 	ethBlockContract := fr.Suave.DeployContract("builder.sol/EthBlockContract.json")
 
 	targetBlock := uint64(1)
-
-	{ // Send a bundle record
-		allowedPeekers := []common.Address{newBlockBidAddress, newBundleBidAddress, buildEthBlockAddress, bundleContract.Address(), ethBlockContract.Address()}
+	{ // Send a bundle to the builder
+		decryptionCondition := targetBlock + 1
+		allowedPeekers := []common.Address{
+			newBlockBidAddress,
+			newBundleBidAddress,
+			buildEthBlockAddress,
+			bundleContract.Address(),
+			ethBlockContract.Address()} // XXX:  added this in response to initial error
+		allowedStores := []common.Address{}
+		newBundleArgs := []any{
+			decryptionCondition,
+			allowedPeekers,
+			allowedStores}
 
 		confidentialDataBytes, err := bundleContract.Abi.Methods["fetchConfidentialBundleData"].Outputs.Pack(bundleBytes)
 		maybe(err)
 
-		_ = bundleContract.SendTransaction("newBundle", []interface{}{targetBlock + 1, allowedPeekers, []common.Address{}}, confidentialDataBytes)
+		_ = bundleContract.SendTransaction("newBundle", newBundleArgs, confidentialDataBytes)
 	}
 
-	// {
+	// { // Signal to the builder that it's time to build a new block
 	// 	ethHead, err := fr.L1.RPC().BlockNumber(context.TODO())
 	// 	maybe(err)
 
@@ -86,7 +96,7 @@ func main() {
 	// 		FeeRecipient:   common.Address{0x42},
 	// 	}
 
-	// 	_ = ethBlockContract.SendTransaction("buildFromPool", []interface{}{payloadArgsTuple, targetBlock + 1}, nil)
+	// 	_ = ethBlockContract.SendTransaction("buildFromPool", []any{payloadArgsTuple, targetBlock + 1}, nil)
 	// 	maybe(err)
 	// }
 }
