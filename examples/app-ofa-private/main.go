@@ -36,7 +36,7 @@ func main() {
 		}()
 	}
 
-	fr := framework.New()
+	fr := framework.New(framework.WithL1())
 	contract := fr.Suave.DeployContract("ofa-private.sol/OFAPrivate.json")
 
 	// Step 1. Create and fund the accounts we are going to frontrun/backrun
