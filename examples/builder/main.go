@@ -12,14 +12,7 @@ import (
 	"github.com/flashbots/suapp-examples/framework"
 )
 
-var (
-	// precompiles
-	buildEthBlockAddress = common.HexToAddress("0x42100001")
-
-	// contracts
-	newBundleBidAddress = common.HexToAddress("0x642300000")
-	newBlockBidAddress  = common.HexToAddress("0x642310000")
-)
+var buildEthBlockAddress = common.HexToAddress("0x42100001")
 
 func main() {
 	fr := framework.New()
@@ -54,8 +47,6 @@ func main() {
 	{ // Send a bundle to the builder
 		decryptionCondition := targetBlock + 1
 		allowedPeekers := []common.Address{
-			newBlockBidAddress,
-			newBundleBidAddress,
 			buildEthBlockAddress,
 			bundleContract.Address(),
 			ethBlockContract.Address()}
