@@ -15,7 +15,7 @@ contract OFAPrivate {
     event BundleEmitted(string bundleRawResponse);
 
     // Internal function to save order details and generate a hint.
-    function saveOrder(uint64 decryptionCondition) internal view returns (HintOrder memory) {
+    function saveOrder(uint64 decryptionCondition) internal returns (HintOrder memory) {
         // Retrieve the bundle data from the confidential inputs
         bytes memory bundleData = Suave.confidentialInputs();
 
@@ -85,7 +85,7 @@ contract OFAPrivate {
         return abi.encodeWithSelector(this.emitMatchDataRecordAndHintCallback.selector, response);
     }
 
-    function submitBundle(string memory builderUrl, bytes memory bundleData) internal view returns (bytes memory) {
+    function submitBundle(string memory builderUrl, bytes memory bundleData) internal returns (bytes memory) {
         // encode the jsonrpc request in JSON format.
         bytes memory body =
             abi.encodePacked('{"jsonrpc":"2.0","method":"mev_sendBundle","params":[', bundleData, '],"id":1}');

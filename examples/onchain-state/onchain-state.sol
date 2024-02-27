@@ -8,7 +8,7 @@ contract OnChainState {
 
     function nilExampleCallback() external payable {}
 
-    function getState() external returns (uint64) {
+    function getState() external view returns (uint64) {
         return state;
     }
 
