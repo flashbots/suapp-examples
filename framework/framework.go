@@ -194,6 +194,9 @@ type Config struct {
 	// This account is funded in your local SUAVE devnet
 	// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
 	FundedAccountL1 *PrivKey `env:"L1_PRIVKEY, default=6c45335a22461ccdb978b78ab61b238bad2fae4544fb55c14eb096c875ccfc52"`
+
+	// Whether to enable L1 or not
+	L1Enabled bool
 }
 
 func New() *Framework {
