@@ -31,11 +31,7 @@ library UniV2Swop {
     address public constant router = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
     /// Returns market price sans fees.
-    function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut)
-        internal
-        view
-        returns (uint256 price)
-    {
+    function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut) internal returns (uint256 price) {
         bytes memory result = Suave.ethcall(
             router, abi.encodeWithSignature("getAmountOut(uint256,uint256,uint256)", amountIn, reserveIn, reserveOut)
         );
@@ -44,7 +40,6 @@ library UniV2Swop {
 
     function approve(address token, address spender, uint256 amount, bytes32 privateKey, TxMeta memory txMeta)
         internal
-        view
         returns (bytes memory signedTx, bytes memory data)
     {
         data = abi.encodeWithSignature("approve(address,uint256)", spender, amount);
@@ -70,7 +65,7 @@ library UniV2Swop {
         SwapExactTokensForTokensRequest memory request,
         bytes32 privateKey,
         TxMeta memory txMeta
-    ) internal view returns (bytes memory signedTx, bytes memory data) {
+    ) internal returns (bytes memory signedTx, bytes memory data) {
         data = abi.encodeWithSignature(
             "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
             request.amountIn,
