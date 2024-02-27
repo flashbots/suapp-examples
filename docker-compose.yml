@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   suave-mevm:
-    image: flashbots/suave-geth:latest
+    image: flashbots/suave-geth:v0.1.2
     command:
       - --suave.dev
       - --http.addr=0.0.0.0

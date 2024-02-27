@@ -4,9 +4,9 @@ pragma solidity ^0.8.8;
 import "suave-std/suavelib/Suave.sol";
 
 contract ConfidentialStore {
-    function callback() external payable {}
+    function callback() external {}
 
-    function example() external payable returns (bytes memory) {
+    function example() external returns (bytes memory) {
         address[] memory allowedList = new address[](1);
         allowedList[0] = address(this);
 

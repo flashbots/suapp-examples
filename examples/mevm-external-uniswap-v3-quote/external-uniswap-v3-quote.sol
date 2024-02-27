@@ -19,7 +19,7 @@ library UniswapV3 {
         uint160 sqrtPriceLimitX96;
     }
 
-    function exactOutputSingle(ExactOutputSingleParams memory params) internal view returns (uint256 amountIn) {
+    function exactOutputSingle(ExactOutputSingleParams memory params) internal returns (uint256 amountIn) {
         bytes memory output = Suave.ethcall(swapRouter, abi.encodeWithSignature(exactOutputSingleSig, params));
         uint256 num = abi.decode(output, (uint64));
         return num;
@@ -29,7 +29,7 @@ library UniswapV3 {
 contract ExternalUniswapV3Quote {
     function callback() external payable {}
 
-    function example(UniswapV3.ExactOutputSingleParams memory params) external payable returns (bytes memory) {
+    function example(UniswapV3.ExactOutputSingleParams memory params) external returns (bytes memory) {
         UniswapV3.exactOutputSingle(params);
 
         return abi.encodeWithSelector(this.callback.selector);
