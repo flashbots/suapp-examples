@@ -199,10 +199,21 @@ type Config struct {
 	L1Enabled bool
 }
 
-func New() *Framework {
+type ConfigOption func(c *Config)
+
+func WithL1() ConfigOption {
+	return func(c *Config) {
+		c.L1Enabled = true
+	}
+}
+
+func New(opts ...ConfigOption) *Framework {
 	var config Config
 	if err := envconfig.Process(context.Background(), &config); err != nil {
 		log.Fatal(err)
+	}
+	for _, opt := range opts {
+		opt(&config)
 	}
 
 	kettleRPC, err := rpc.Dial(config.KettleRPC)
@@ -217,18 +228,22 @@ func New() *Framework {
 
 	suaveClt := sdk.NewClient(kettleRPC, config.FundedAccount.Priv, accounts[0])
 
-	l1RPC, err := rpc.Dial(config.L1RPC)
-	if err != nil {
-		panic(err)
-	}
-	l1Clt := sdk.NewClient(l1RPC, config.FundedAccountL1.Priv, common.Address{})
-
-	return &Framework{
+	fr := &Framework{
 		config:        &config,
 		KettleAddress: accounts[0],
 		Suave:         &Chain{rpc: kettleRPC, clt: suaveClt, kettleAddr: accounts[0]},
-		L1:            &Chain{rpc: l1RPC, clt: l1Clt},
 	}
+
+	if config.L1Enabled {
+		l1RPC, err := rpc.Dial(config.L1RPC)
+		if err != nil {
+			panic(err)
+		}
+		l1Clt := sdk.NewClient(l1RPC, config.FundedAccountL1.Priv, common.Address{})
+		fr.L1 = &Chain{rpc: l1RPC, clt: l1Clt}
+	}
+
+	return fr
 }
 
 type Chain struct {

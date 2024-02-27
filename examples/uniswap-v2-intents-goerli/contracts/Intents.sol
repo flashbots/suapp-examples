@@ -79,7 +79,7 @@ contract Intents {
     }
 
     /// Broadcast an intent to SUAVE.
-    function sendIntent() public view returns (bytes memory suaveCallData) {
+    function sendIntent() public returns (bytes memory suaveCallData) {
         // ensure we're computing in the enclave
         require(Suave.isConfidential(), "not confidential");
 
@@ -141,7 +141,6 @@ contract Intents {
     /// ]
     function fulfillIntent(bytes32 orderId, Suave.DataId dataId, TxMeta memory txMeta)
         public
-        view
         returns (bytes memory suaveCallData)
     {
         // ensure we're computing in the enclave (is this required here?)
