@@ -87,63 +87,6 @@ contract EthBlockContract is AnyBundleContract {
         return true;
     }
 
-    function buildMevShare(Suave.BuildBlockArgs memory blockArgs, uint64 blockHeight) public returns (bytes memory) {
-        require(Suave.isConfidential());
-
-        Suave.DataRecord[] memory allShareMatchDataRecords =
-            Suave.fetchDataRecords(blockHeight, "mevshare:v0:matchDataRecords");
-        Suave.DataRecord[] memory allShareUserDataRecords =
-            Suave.fetchDataRecords(blockHeight, "mevshare:v0:unmatchedBundles");
-
-        if (allShareUserDataRecords.length == 0) {
-            revert Suave.PeekerReverted(address(this), "no data records");
-        }
-
-        Suave.DataRecord[] memory allRecords = new Suave.DataRecord[](allShareUserDataRecords.length);
-        for (uint256 i = 0; i < allShareUserDataRecords.length; i++) {
-            // TODO: sort matches by egp first!
-            Suave.DataRecord memory dataRecordToInsert = allShareUserDataRecords[i]; // will be updated with the best match if any
-            for (uint256 j = 0; j < allShareMatchDataRecords.length; j++) {
-                // TODO: should be done once at the start and sorted
-                Suave.DataId[] memory mergeddataIds = abi.decode(
-                    Suave.confidentialRetrieve(allShareMatchDataRecords[j].id, "mevshare:v0:mergedDataRecords"),
-                    (Suave.DataId[])
-                );
-                if (idsEqual(mergeddataIds[0], allShareUserDataRecords[i].id)) {
-                    dataRecordToInsert = allShareMatchDataRecords[j];
-                    break;
-                }
-            }
-            allRecords[i] = dataRecordToInsert;
-        }
-
-        EgpRecordPair[] memory bidsByEGP = new EgpRecordPair[](allRecords.length);
-        for (uint256 i = 0; i < allRecords.length; i++) {
-            bytes memory simResults = Suave.confidentialRetrieve(allRecords[i].id, "mevshare:v0:ethBundleSimResults");
-            uint64 egp = abi.decode(simResults, (uint64));
-            bidsByEGP[i] = EgpRecordPair(egp, allRecords[i].id);
-        }
-
-        // Bubble sort, cause why not
-        uint256 n = bidsByEGP.length;
-        for (uint256 i = 0; i < n - 1; i++) {
-            for (uint256 j = i + 1; j < n; j++) {
-                if (bidsByEGP[i].egp < bidsByEGP[j].egp) {
-                    EgpRecordPair memory temp = bidsByEGP[i];
-                    bidsByEGP[i] = bidsByEGP[j];
-                    bidsByEGP[j] = temp;
-                }
-            }
-        }
-
-        Suave.DataId[] memory alldataIds = new Suave.DataId[](allRecords.length);
-        for (uint256 i = 0; i < bidsByEGP.length; i++) {
-            alldataIds[i] = bidsByEGP[i].dataId;
-        }
-
-        return buildAndEmit(blockArgs, blockHeight, alldataIds, "mevshare:v0");
-    }
-
     function buildFromPool(Suave.BuildBlockArgs memory blockArgs, uint64 blockHeight) public returns (bytes memory) {
         require(Suave.isConfidential());
 
