@@ -15,7 +15,7 @@ import (
 var buildEthBlockAddress = common.HexToAddress("0x42100001")
 
 func main() {
-	fr := framework.New()
+	fr := framework.New(framework.WithL1())
 
 	testAddr1 := framework.GeneratePrivKey()
 	log.Printf("Test address 1: %s", testAddr1.Address().Hex())
