@@ -2,6 +2,7 @@
 pragma solidity ^0.8.8;
 
 import "suave-std/suavelib/Suave.sol";
+import "suave-std/Context.sol";
 
 contract OFAPrivate {
     // Struct to hold hint-related information for an order.
@@ -17,7 +18,7 @@ contract OFAPrivate {
     // Internal function to save order details and generate a hint.
     function saveOrder(uint64 decryptionCondition) internal returns (HintOrder memory) {
         // Retrieve the bundle data from the confidential inputs
-        bytes memory bundleData = Suave.confidentialInputs();
+        bytes memory bundleData = Context.confidentialInputs();
 
         // Simulate the bundle and extract its score.
         uint64 egp = Suave.simulateBundle(bundleData);
@@ -42,22 +43,18 @@ contract OFAPrivate {
         return hintOrder;
     }
 
-    function emitHint(HintOrder memory order) public payable {
+    function emitHint(HintOrder memory order) public {
         emit HintEvent(order.id, order.hint);
     }
 
     // Function to create a new user order
-    function newOrder(uint64 decryptionCondition) external payable returns (bytes memory) {
+    function newOrder(uint64 decryptionCondition) external returns (bytes memory) {
         HintOrder memory hintOrder = saveOrder(decryptionCondition);
         return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
     }
 
     // Function to match and backrun another dataRecord.
-    function newMatch(Suave.DataId shareDataRecordId, uint64 decryptionCondition)
-        external
-        payable
-        returns (bytes memory)
-    {
+    function newMatch(Suave.DataId shareDataRecordId, uint64 decryptionCondition) external returns (bytes memory) {
         HintOrder memory hintOrder = saveOrder(decryptionCondition);
 
         // Merge the dataRecords and store them in the confidential datastore.
@@ -70,13 +67,12 @@ contract OFAPrivate {
         return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
     }
 
-    function emitMatchDataRecordAndHintCallback(string memory bundleRawResponse) external payable {
+    function emitMatchDataRecordAndHintCallback(string memory bundleRawResponse) external {
         emit BundleEmitted(bundleRawResponse);
     }
 
     function emitMatchDataRecordAndHint(string memory builderUrl, Suave.DataId dataRecordId)
         external
-        payable
         returns (bytes memory)
     {
         bytes memory bundleData = Suave.fillMevShareBundle(dataRecordId);

@@ -12,7 +12,7 @@ contract OnChainCallback {
         emit CallbackEvent(num);
     }
 
-    function example() external payable returns (bytes memory) {
+    function example() external returns (bytes memory) {
         // event emitted in the off-chain confidential context, no effect.
         emit NilEvent();
 

@@ -29,7 +29,7 @@ library UniswapV3 {
 contract ExternalUniswapV3Quote {
     function callback() external payable {}
 
-    function example(UniswapV3.ExactOutputSingleParams memory params) external payable returns (bytes memory) {
+    function example(UniswapV3.ExactOutputSingleParams memory params) external returns (bytes memory) {
         UniswapV3.exactOutputSingle(params);
 
         return abi.encodeWithSelector(this.callback.selector);
