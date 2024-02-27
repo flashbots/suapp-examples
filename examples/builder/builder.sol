@@ -66,7 +66,6 @@ contract EthBundleSenderContract is BundleContract {
     }
 }
 
-/* Not tested or implemented on the precompile side */
 struct EgpRecordPair {
     uint64 egp; // in wei, beware overflow
     Suave.DataId dataId;
