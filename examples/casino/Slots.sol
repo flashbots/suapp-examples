@@ -60,7 +60,7 @@ contract SlotMachines {
         emit InitializedSlotMachine(slotId, msg.value, minBet);
     }
 
-    function pullSlot(uint256 slotId, uint256 betAmount) public view returns (bytes memory suave_call_data) {
+    function pullSlot(uint256 slotId, uint256 betAmount) public returns (bytes memory suave_call_data) {
         require(Suave.isConfidential(), "must call via confidential compute request");
         require(chipsBalance[msg.sender] >= betAmount, "insufficient funds deposited");
         CasinoLib.SlotMachine memory machine = slotMachines[slotId];
