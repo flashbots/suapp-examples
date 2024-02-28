@@ -3,7 +3,7 @@ import { SuaveProvider, SuaveWallet, getSuaveProvider, getSuaveWallet } from '@f
 import { SlotsClient, checkSlotPullReceipt } from './lib/slots'
 import { DEFAULT_ADMIN_KEY, DEFAULT_KETTLE_ADDRESS, ETH, roundEth } from './lib/utils'
 
-export async function testSlotMachine<T extends Transport>(params: {
+async function testSlotMachine<T extends Transport>(params: {
     suaveProvider: SuaveProvider<T>,
     adminWallet: SuaveWallet<T>,
     kettleAddress?: Address,
