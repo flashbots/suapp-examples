@@ -211,6 +211,12 @@ async function testIntents<T extends Transport>(
 }
 
 async function main() {
+    if (!config.GOERLI_KEY) {
+        console.warn("GOERLI_KEY is not set, using default. Your bundle will not land.\nTo fix, update .env in the project root.\n")
+    }
+    if (!config.SUAVE_KEY) {
+        console.warn("SUAVE_KEY is not set, using default. Your SUAVE request may not land.\nTo fix, update .env in the project root.\n")
+    }
     // get a suave wallet & provider, connected to rigil testnet
     const suaveWallet = getSuaveWallet({
         privateKey: (config.SUAVE_KEY || TestnetConfig.suave.defaultAdminKey) as Hex,
