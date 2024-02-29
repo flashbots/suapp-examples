@@ -124,16 +124,16 @@ func main() {
 
 	fmt.Println("Match event id", matchEvent.DataRecordId)
 
-	// Step 4. Emit the batch to the relayer and parse the output
-	fmt.Println("4. Emit batch")
+	// // Step 4. Emit the batch to the relayer and parse the output
+	// fmt.Println("4. Emit batch")
 
-	receipt = contract.SendTransaction("emitMatchDataRecordAndHint", []interface{}{cfg.BuilderURL, matchEvent.DataRecordId}, backRunBundleBytes)
-	bundleHash, err := decodeBundleEmittedOutput(receipt)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// receipt = contract.SendTransaction("emitMatchDataRecordAndHint", []interface{}{cfg.BuilderURL, matchEvent.DataRecordId}, backRunBundleBytes)
+	// bundleHash, err := decodeBundleEmittedOutput(receipt)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	fmt.Println("Bundle hash", bundleHash)
+	// fmt.Println("Bundle hash", bundleHash)
 }
 
 var (
