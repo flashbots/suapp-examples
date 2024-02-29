@@ -177,7 +177,7 @@ func (c *Contract) SendTransaction(method string, args []interface{}, confidenti
 
 type Framework struct {
 	config        *Config
-	kettleAddress common.Address
+	KettleAddress common.Address
 
 	Suave *Chain
 	L1    *Chain
@@ -186,14 +186,15 @@ type Framework struct {
 type Config struct {
 	KettleRPC string `env:"KETTLE_RPC, default=http://localhost:8545"`
 
-	// This account is funded in your local L1 devnet
+	// This account is funded in your local SUAVE devnet
+	// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
 	FundedAccount *PrivKey `env:"KETTLE_PRIVKEY, default=91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"`
 
 	L1RPC string `env:"L1_RPC, default=http://localhost:8555"`
 
-	// This account is funded in your local SUAVE devnet
-	// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
-	FundedAccountL1 *PrivKey `env:"L1_PRIVKEY, default=91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"`
+	// This account is funded in your local L1 devnet
+	// address: 0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F
+	FundedAccountL1 *PrivKey `env:"L1_PRIVKEY, default=6c45335a22461ccdb978b78ab61b238bad2fae4544fb55c14eb096c875ccfc52"`
 
 	// Whether to enable L1 or not
 	L1Enabled bool
@@ -230,7 +231,7 @@ func New(opts ...ConfigOption) *Framework {
 
 	fr := &Framework{
 		config:        &config,
-		kettleAddress: accounts[0],
+		KettleAddress: accounts[0],
 		Suave:         &Chain{rpc: kettleRPC, clt: suaveClt, kettleAddr: accounts[0]},
 	}
 
