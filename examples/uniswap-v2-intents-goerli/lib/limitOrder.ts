@@ -25,16 +25,16 @@ export interface ILimitOrder {
     senderKey: Hex
 }
 
-export async function deployLimitOrderManager<T extends Transport>(wallet: SuaveWallet<T>, provider: SuaveProvider<T>): Promise<Address> {
-    // deploy LimitOrderManager
-    console.log("deploying LimitOrderManager")
+export async function deployIntentRouter<T extends Transport>(wallet: SuaveWallet<T>, provider: SuaveProvider<T>): Promise<Address> {
+    // deploy IntentRouter
+    console.log("deploying IntentRouter")
     const deployContractTxHash = await wallet.deployContract({
         abi: IntentsContract.abi,
         bytecode: IntentsContract.bytecode.object as Hex,
         
     })
     const deployContractReceipt = await provider.waitForTransactionReceipt({ hash: deployContractTxHash })
-    console.log("FINISHED deploying LimitOrderManager")
+    console.log("FINISHED deploying IntentRouter")
 
     // Return the contract address from the receipt
     if (!deployContractReceipt.contractAddress) throw new Error('no contract address')

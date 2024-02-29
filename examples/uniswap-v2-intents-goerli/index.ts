@@ -10,7 +10,7 @@ import {
 import IntentsContract from '../../out/Intents.sol/Intents.json'
 import { 
     LimitOrder,
-    deployLimitOrderManager, // needed if you decide to re-deploy
+    deployIntentRouter, // needed if you decide to re-deploy
 } from './lib/limitOrder'
 import { SuaveRevert } from './lib/suaveError'
 import { 
@@ -40,10 +40,10 @@ async function testIntents<T extends Transport>(
     , goerliKey: Hex
     , kettleAddress: Hex) 
 {
-    // set DEPLOY=true in process.env if you want to re-deploy the LimitOrderManager
+    // set DEPLOY=true in process.env if you want to re-deploy the IntentRouter
     // `DEPLOY=true bun run index.ts`
     const intentRouterAddress = process.env.DEPLOY ?
-        await deployLimitOrderManager(_suaveWallet, suaveProvider) :
+        await deployIntentRouter(_suaveWallet, suaveProvider) :
         TestnetConfig.suave.intentRouter as Hex
 
     const goerliWallet = createWalletClient({

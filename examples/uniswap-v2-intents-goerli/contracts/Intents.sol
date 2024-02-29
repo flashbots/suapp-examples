@@ -37,14 +37,16 @@ contract Intents {
     // we probably shouldn't be storing intents in contract storage
     // TODO: make a stateless or ConfidentialStore-based design
     mapping(bytes32 => LimitOrderPublic) public intentsPending;
-    string public constant RPC_URL = "https://relay-goerli.flashbots.net";
+    string public constant GOERLI_BUNDLE_RPC = "https://relay-goerli.flashbots.net";
+    string public constant GOERLI_ETH_RPC = "https://rpc-goerli.flashbots.net";
     bytes2 public constant TX_PLACEHOLDER = 0xf00d;
 
     event Test(uint64 num);
     event LimitOrderReceived(
         bytes32 orderId, bytes16 dataId, address tokenIn, address tokenOut, uint256 expiryTimestamp
     );
-    event IntentFulfilled(bytes32 orderId, bytes bundleRes);
+    event IntentFulfillmentRequested(bytes32 orderId, bytes bundleRes);
+    event IntentFulfilled(bytes32 orderId, bytes receiptRes);
 
     fallback() external {
         emit Test(0x9001);
@@ -115,12 +117,18 @@ contract Intents {
     }
 
     /// Returns ABI-encoded calldata of `onReceivedIntent(...)`.
-    function encodeOnFulfilledIntent(bytes32 orderId, bytes memory bundleRes) private pure returns (bytes memory) {
-        return bytes.concat(this.onFulfilledIntent.selector, abi.encode(orderId, bundleRes));
+    function encodeOnFulfillIntent(bytes32 orderId, bytes memory bundleRes) private pure returns (bytes memory) {
+        return bytes.concat(this.onFulfillIntent.selector, abi.encode(orderId, bundleRes));
     }
 
+    // function checkTransactionReceipt(bytes32 txHash) internal view returns (bool) {
+    //     Suave.HttpRequest memory req =
+    //         Suave.HttpRequest({url: GOERLI_ETH_RPC, method: "POST", headers: "", body: bundleRes});
+    //     Suave.doHTTPRequest(request);
+    // }
+
     /// Triggered when an intent is fulfilled via `fulfillIntent`.
-    function onFulfilledIntent(bytes32 orderId, bytes memory bundleRes) public {
+    function onFulfillIntent(bytes32 orderId, bytes memory bundleRes) public {
         delete intentsPending[orderId];
         emit IntentFulfilled(orderId, bundleRes);
     }
@@ -193,7 +201,7 @@ contract Intents {
             uint64 simResult = Suave.simulateBundle(Bundle.encodeBundle(bundleObj).body);
             require(simResult == 0, "sim failed");
 
-            bundleRes = Bundle.sendBundle("https://relay-goerli.flashbots.net", bundleObj);
+            bundleRes = Bundle.sendBundle(GOERLI_BUNDLE_RPC, bundleObj);
             require(
                 // this hex is '{"id":1,"result"'
                 // close-enough way to check for successful sendBundle call
@@ -206,6 +214,6 @@ contract Intents {
         // ... right now we just assume the bundle landed
 
         // trigger `onFulfilledIntent`
-        suaveCallData = encodeOnFulfilledIntent(orderId, bundleRes);
+        suaveCallData = encodeOnFulfillIntent(orderId, bundleRes);
     }
 }
