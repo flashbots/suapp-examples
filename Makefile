@@ -28,7 +28,7 @@ lt: lint test
 
 .PHONY: run-integration
 run-integration:
-	go run examples/builder/main.go
+	go run examples/build-eth-block/main.go
 	go run examples/mevm-confidential-store/main.go 
 	go run examples/mevm-is-confidential/main.go 
 	go run examples/onchain-callback/main.go 
