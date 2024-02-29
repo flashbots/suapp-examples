@@ -32,3 +32,4 @@ run-integration:
 	go run examples/mevm-is-confidential/main.go 
 	go run examples/onchain-callback/main.go 
 	go run examples/onchain-state/main.go
+	go run examples/offchain-logs/main.go
