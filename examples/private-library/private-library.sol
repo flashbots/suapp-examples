@@ -1,12 +1,14 @@
+// SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.8;
 
 import "suave-std/suavelib/Suave.sol";
+import "suave-std/Context.sol";
 
 contract PublicSuapp {
-    function callback() public payable {}
+    function callback() public {}
 
-    function example() public payable returns (bytes memory) {
-        bytes memory bytecode = Suave.confidentialInputs();
+    function example() public returns (bytes memory) {
+        bytes memory bytecode = Context.confidentialInputs();
         address addr = deploy(bytecode);
 
         PrivateLibraryI c = PrivateLibraryI(addr);

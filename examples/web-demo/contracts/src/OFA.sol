@@ -2,7 +2,8 @@
 pragma solidity ^0.8.8;
 
 import "suave-std/suavelib/Suave.sol";
-import "suave-std/Context.sol";
+import {Bundle} from "suave-std/protocols/Bundle.sol";
+import "solady/src/utils/LibString.sol";
 
 contract OFAPrivate {
     // Struct to hold hint-related information for an order.
@@ -15,17 +16,29 @@ contract OFAPrivate {
 
     event BundleEmitted(string bundleRawResponse);
 
+    event Debug(string message, bytes data);
+
     // Internal function to save order details and generate a hint.
     function saveOrder(uint64 decryptionCondition) internal returns (HintOrder memory) {
         // Retrieve the bundle data from the confidential inputs
-        bytes memory bundleData = Context.confidentialInputs();
+        bytes memory bundleData = Suave.confidentialInputs();
+        Bundle.BundleObj memory bundle = abi.decode(bundleData, (Bundle.BundleObj));
+        bundleData = Bundle.encodeBundle(bundle).body;
 
         // Simulate the bundle and extract its score.
         uint64 egp = Suave.simulateBundle(bundleData);
 
         // Extract a hint about this bundle that is going to be leaked
         // to external applications.
-        bytes memory hint = Suave.extractHint(bundleData);
+        bytes memory extractHintPayload = abi.encodePacked('{"revertingHashes": [], "txs": [');
+        for (uint256 i = 0; i < bundle.txns.length; i++) {
+            extractHintPayload = abi.encodePacked(extractHintPayload, '"', LibString.toHexString(bundle.txns[i]), '"');
+            if (i < bundle.txns.length - 1) {
+                extractHintPayload = abi.encodePacked(extractHintPayload, ",");
+            }
+        }
+        extractHintPayload = abi.encodePacked(extractHintPayload, "]}");
+        bytes memory hint = Suave.extractHint(extractHintPayload);
 
         address[] memory allowedList = new address[](2);
         allowedList[0] = address(this);
@@ -43,18 +56,22 @@ contract OFAPrivate {
         return hintOrder;
     }
 
-    function emitHint(HintOrder memory order) public {
+    function emitHint(HintOrder memory order) public payable {
         emit HintEvent(order.id, order.hint);
     }
 
     // Function to create a new user order
-    function newOrder(uint64 decryptionCondition) external returns (bytes memory) {
+    function newOrder(uint64 decryptionCondition) external payable returns (bytes memory) {
         HintOrder memory hintOrder = saveOrder(decryptionCondition);
         return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
     }
 
     // Function to match and backrun another dataRecord.
-    function newMatch(Suave.DataId shareDataRecordId, uint64 decryptionCondition) external returns (bytes memory) {
+    function newMatch(Suave.DataId shareDataRecordId, uint64 decryptionCondition)
+        external
+        payable
+        returns (bytes memory)
+    {
         HintOrder memory hintOrder = saveOrder(decryptionCondition);
 
         // Merge the dataRecords and store them in the confidential datastore.
@@ -67,12 +84,13 @@ contract OFAPrivate {
         return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
     }
 
-    function emitMatchDataRecordAndHintCallback(string memory bundleRawResponse) external {
+    function emitMatchDataRecordAndHintCallback(string memory bundleRawResponse) external payable {
         emit BundleEmitted(bundleRawResponse);
     }
 
     function emitMatchDataRecordAndHint(string memory builderUrl, Suave.DataId dataRecordId)
         external
+        payable
         returns (bytes memory)
     {
         bytes memory bundleData = Suave.fillMevShareBundle(dataRecordId);
