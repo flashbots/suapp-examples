@@ -48,8 +48,8 @@ func main() {
 		decryptionCondition := targetBlock + 1
 		allowedPeekers := []common.Address{
 			buildEthBlockAddress,
-			bundleContract.Address(),
-			ethBlockContract.Address()}
+			bundleContract.Raw().Address(),
+			ethBlockContract.Raw().Address()}
 		allowedStores := []common.Address{}
 		newBundleArgs := []any{
 			decryptionCondition,
@@ -59,7 +59,7 @@ func main() {
 		confidentialDataBytes, err := bundleContract.Abi.Methods["fetchConfidentialBundleData"].Outputs.Pack(bundleBytes)
 		maybe(err)
 
-		_ = bundleContract.SendTransaction("newBundle", newBundleArgs, confidentialDataBytes)
+		_ = bundleContract.SendConfidentialRequest("newBundle", newBundleArgs, confidentialDataBytes)
 	}
 
 	{ // Signal to the builder that it's time to build a new block
@@ -69,7 +69,7 @@ func main() {
 			FeeRecipient:   common.Address{0x42},
 		}
 
-		_ = ethBlockContract.SendTransaction("buildFromPool", []any{payloadArgsTuple, targetBlock + 1}, nil)
+		_ = ethBlockContract.SendConfidentialRequest("buildFromPool", []any{payloadArgsTuple, targetBlock + 1}, nil)
 		maybe(err)
 	}
 }

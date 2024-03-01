@@ -7,5 +7,5 @@ func main() {
 
 	fr := framework.New()
 	fr.Suave.DeployContract("private-library.sol/PublicSuapp.json").
-		SendTransaction("example", nil, privateLibrary.Code)
+		SendConfidentialRequest("example", nil, privateLibrary.Code)
 }
