@@ -6,12 +6,12 @@ import {
     encodeAbiParameters,
     encodeFunctionData,
     parseAbi
-} from 'viem/src'
+} from '@flashbots/suave-viem'
 import {
     type SuaveProvider,
     SuaveTxRequestTypes,
     type TransactionRequestSuave
-} from 'viem/src/chains/utils'
+} from '@flashbots/suave-viem/chains/utils'
 
 export const TX_PLACEHOLDER: Hex = '0xf00d'
 
@@ -68,7 +68,7 @@ export interface IFulfillIntentRequest {
     // for `fulfillIntent(bytes32 orderId, Suave.DataId dataId, memory txMeta)`
     orderId: Hash
     dataId: Hex // bytes16
-    txMeta: TxMeta
+    txMeta: TxMeta[]
     // confidential input
     bundleTxs: Hex[]
     blockNumber: bigint
@@ -102,7 +102,7 @@ export class FulfillIntentRequest<T extends Transport> implements IFulfillIntent
     // request params
     orderId: Hash
     dataId: Hex
-    txMeta: TxMeta
+    txMeta: TxMeta[]
     // confidential input
     bundleTxs: Hex[]
     blockNumber: bigint
@@ -165,12 +165,16 @@ export class FulfillIntentRequest<T extends Transport> implements IFulfillIntent
     }
 
     private calldata(): Hex {
+        const txMeta = this.txMeta.map(meta => meta.abiData())
+        if (txMeta.length !== 2) {
+            throw new Error(`expected 2 txMeta, got ${txMeta.length}`)
+        }
         return encodeFunctionData({
-            abi: parseAbi(['function fulfillIntent(bytes32,bytes16,(uint256,uint256,uint256,uint256)) public']),
+            abi: parseAbi(['function fulfillIntent(bytes32,bytes16,(uint256,uint256,uint256,uint256)[2]) public']),
             args: [
                 this.orderId,
                 this.dataId,
-                this.txMeta.abiData(),
+                txMeta as [[bigint, bigint, bigint, bigint], [bigint, bigint, bigint, bigint]]
             ],
             functionName: 'fulfillIntent'
         })

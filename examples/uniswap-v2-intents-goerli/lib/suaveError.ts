@@ -1,4 +1,4 @@
-import { bytesToString, hexToBytes } from 'viem/src'
+import { bytesToString, hexToBytes } from '@flashbots/suave-viem'
 
 /** only catches and decodes revert errors, throws the rest. */
 function decodeRawError<E extends Error>(error: E): {name: string, details: string} {
@@ -12,7 +12,7 @@ function decodeRawError<E extends Error>(error: E): {name: string, details: stri
         console.error('could not find revert reason')
         throw error
     }
-    const decodedReason = bytesToString(hexToBytes(`0x${reason.substring(10)}`))
+    const decodedReason = bytesToString(hexToBytes(`0x${reason}`))
     return {
         name: 'execution reverted',
         details: decodedReason,

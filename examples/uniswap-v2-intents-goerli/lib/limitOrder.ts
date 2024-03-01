@@ -6,13 +6,13 @@ import {
     encodeFunctionData,
     keccak256,
     parseAbi
-} from 'viem/src'
+} from '@flashbots/suave-viem'
 import {
     type SuaveProvider,
     SuaveTxRequestTypes,
     type SuaveWallet,
     type TransactionRequestSuave
-} from 'viem/src/chains/utils'
+} from '@flashbots/suave-viem/chains/utils'
 import IntentsContract from '../../../out/Intents.sol/Intents.json'
 
 export interface ILimitOrder {

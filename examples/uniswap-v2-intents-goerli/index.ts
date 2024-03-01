@@ -6,7 +6,7 @@ import {
     type TransactionRequestSuave,
     getSuaveProvider,
     getSuaveWallet
-} from 'viem/src/chains/utils'
+} from '@flashbots/suave-viem/chains/utils'
 import IntentsContract from '../../out/Intents.sol/Intents.json'
 import { 
     LimitOrder,
@@ -26,13 +26,20 @@ import {
     http,
     padHex,
     parseEther,
-    toHex
-} from 'viem/src'
-import { goerli, suaveRigil } from 'viem/src/chains'
-import { privateKeyToAccount } from 'viem/src/accounts'
+    toHex,
+    hexToBigInt,
+    decodeAbiParameters,
+    parseAbiParameters,
+    parseAbiItem,
+    hexToString,
+} from '@flashbots/suave-viem'
+import { goerli, suaveRigil } from '@flashbots/suave-viem/chains'
+import { privateKeyToAccount } from '@flashbots/suave-viem/accounts'
 import { Bundle, FulfillIntentRequest, TxMeta } from './lib/intentBundle'
 import TestnetConfig from './rigil.json'
 import config from "./lib/env"
+import { parseAbi } from '@flashbots/suave-viem'
+import { getWeth } from './lib/utils'
 
 async function testIntents<T extends Transport>(
     _suaveWallet: SuaveWallet<T>
@@ -134,16 +141,12 @@ async function testIntents<T extends Transport>(
     
     // check onchain for intent
     const intentResult = await suaveProvider.call({
-        account: suaveWallet.account.address,
         to: intentRouterAddress,
         data: encodeFunctionData({
             abi: IntentsContract.abi,
             args: [limitOrder.orderId()],
             functionName: 'intentsPending'
         }),
-        gasPrice: 10000000000n,
-        gas: 42000n,
-        type: '0x0'
     })
     console.log('intentResult', intentResult)
 
@@ -159,7 +162,6 @@ async function testIntents<T extends Transport>(
     }).args
     console.log("*** decoded log", decodedLog)
     const { dataId } = decodedLog as { dataId: Hex }
-    console.log("dataId", dataId)
     if (!dataId) {
         throw new Error('no dataId found in logs')
     }
@@ -172,28 +174,31 @@ async function testIntents<T extends Transport>(
     const nonce = await goerliProvider.getTransactionCount({
         address: goerliWallet.account.address
     })
-    console.log("nonce", nonce)
-    console.log("admin", goerliWallet.account.address)
     const blockNumber = await goerliProvider.getBlockNumber()
     const targetBlock = blockNumber + 1n
     console.log("targeting blockNumber", targetBlock)
 
     // tx params for goerli txs
-    const txMeta = new TxMeta()
+    const txMetaApprove = new TxMeta()
         .withChainId(goerli.id)
         .withNonce(nonce)
-        .withGas(151000n)
-    console.log("txMeta", txMeta)
+        .withGas(70000n)
+        .withGasPrice(10000000000n)
+    const txMetaSwap = new TxMeta()
+        .withChainId(goerli.id)
+        .withNonce(nonce + 1)
+        .withGas(200000n)
+        .withGasPrice(50000000000n)
 
     const fulfillIntent = new FulfillIntentRequest({
         orderId: limitOrder.orderId(),
         dataId: dataId,
-        txMeta,
+        txMeta: [txMetaApprove, txMetaSwap],
         bundleTxs: new Bundle().signedTxs,
         blockNumber: targetBlock,
     }, suaveProvider, intentRouterAddress, kettleAddress)
     const txRequest = await fulfillIntent.toTransactionRequest()
-    console.log("fulfillOrder txRequest", txRequest)
+    console.log("fulfillIntent txRequest", txRequest)
 
     // send the CCR
     const fulfillIntentTxHash = await suaveWallet.sendTransaction(txRequest)
@@ -207,6 +212,22 @@ async function testIntents<T extends Transport>(
     }
     if (fulfillIntentReceipt.logs[0].topics[0] !== '0x6cfef2b359d2bc325989410c5b08045b006cd80ea36a48c332233798808abacb') {
         throw new Error("fulfillIntent failed: invalid event signature.")
+    }
+    
+    for (const log of fulfillIntentReceipt.logs) {
+        const decodedLog = decodeEventLog({
+            abi: IntentsContract.abi,
+            ...log,        
+        })
+        console.log("decodedLog", decodedLog)
+        const logData = decodedLog.args as {orderId: Hex, receiptRes: Hex}
+        const [orderRes, egps] = decodeAbiParameters(
+            parseAbiParameters('bytes, uint64[10]'),
+            logData.receiptRes
+        )
+        console.log(hexToString(orderRes))
+        console.log("egps", egps)
+
     }
 }
 
@@ -231,7 +252,38 @@ async function main() {
         account: privateKeyToAccount(goerliKEY),
         transport: http(goerli.rpcUrls.public.http[0]),
     })
+    const goerliProvider = createPublicClient({
+        chain: goerli,
+        transport: http(goerli.rpcUrls.public.http[0]),
+    })
     console.log("goerliWallet", goerliWallet.account.address)
+
+    // get goerli weth balance, top up if needed
+    const wethBalanceRes = (await goerliProvider.call({
+        account: goerliWallet.account.address,
+        to: TestnetConfig.goerli.weth as Hex,
+        data: encodeFunctionData({
+            functionName: 'balanceOf',
+            args: [goerliWallet.account.address],
+            abi: parseAbi(['function balanceOf(address) public view returns (uint256)']),
+        })
+    })).data
+    
+    if (!wethBalanceRes) {
+        throw new Error('failed to get WETH balance')
+    }
+    const wethBalance = hexToBigInt(wethBalanceRes)
+
+    console.log("wethBalance", formatEther(wethBalance))
+    const minBalance = parseEther('0.1')
+    if (wethBalance < minBalance) {
+        console.log("topping up WETH")
+        const txHash = await getWeth(minBalance, goerliWallet)
+        console.log(`got ${minBalance} weth`, txHash)
+        // wait for 12 seconds for the tx to land
+        console.log("waiting for 12 seconds for tx to land on goerli")
+        await new Promise(resolve => setTimeout(resolve, 12000))
+    }
 
     // run test script
     await testIntents(suaveWallet, suaveProvider, goerliKEY, TestnetConfig.suave.testnetKettleAddress as Hex)

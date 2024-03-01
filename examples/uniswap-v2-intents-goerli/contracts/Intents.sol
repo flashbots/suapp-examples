@@ -42,10 +42,11 @@ contract Intents {
     bytes2 public constant TX_PLACEHOLDER = 0xf00d;
 
     event Test(uint64 num);
+    event Test(bytes res);
     event LimitOrderReceived(
         bytes32 orderId, bytes16 dataId, address tokenIn, address tokenOut, uint256 expiryTimestamp
     );
-    event IntentFulfillmentRequested(bytes32 orderId, bytes bundleRes);
+    //TODO: event IntentFulfillmentRequested(bytes32 orderId, bytes bundleRes);
     event IntentFulfilled(bytes32 orderId, bytes receiptRes);
 
     fallback() external {
@@ -147,7 +148,7 @@ contract Intents {
     ///     "0xf00d",   // TX_PLACEHOLDER
     ///     "0x02...2" // signedTx 2
     /// ]
-    function fulfillIntent(bytes32 orderId, Suave.DataId dataId, TxMeta memory txMeta)
+    function fulfillIntent(bytes32 orderId, Suave.DataId dataId, TxMeta[2] memory txMeta)
         public
         returns (bytes memory suaveCallData)
     {
@@ -161,9 +162,7 @@ contract Intents {
             abi.decode(Suave.confidentialRetrieve(dataId, LibString.toHexString(uint256(orderId))), (bytes32, address));
 
         (bytes memory signedApprove,) =
-            UniV2Swop.approve(order.tokenIn, UniV2Swop.router, order.amountIn, privateKey, txMeta);
-
-        txMeta.nonce += 1;
+            UniV2Swop.approve(order.tokenIn, UniV2Swop.router, order.amountIn, privateKey, txMeta[0]);
 
         address[] memory path = new address[](2);
         path[0] = order.tokenIn;
@@ -171,7 +170,7 @@ contract Intents {
         (bytes memory signedSwap,) = UniV2Swop.swapExactTokensForTokens(
             SwapExactTokensForTokensRequest(order.amountIn, order.amountOutMin, path, to, order.expiryTimestamp),
             privateKey,
-            txMeta
+            txMeta[1]
         );
 
         // load bundle from confidentialInputs
@@ -189,23 +188,27 @@ contract Intents {
         // encode & send bundle request for each of the next 10 blocks
         bytes memory bundleRes;
         Bundle.BundleObj memory bundleObj;
+        uint64[] memory egps = new uint64[](10);
         for (uint8 i = 0; i < 10; i++) {
             bundleObj = Bundle.BundleObj({
                 blockNumber: uint64(bundle.blockNumber + i),
                 minTimestamp: 0,
                 maxTimestamp: 0,
-                txns: bundle.txs
+                txns: bundle.txs,
+                revertingHashes: new bytes32[](0),
+                refundPercent: 80
             });
 
             // simulate bundle and revert if it fails
-            uint64 simResult = Suave.simulateBundle(Bundle.encodeBundle(bundleObj).body);
-            require(simResult == 0, "sim failed");
+            uint64 egp = Bundle.simulateBundle(bundleObj);
+            egps[i] = egp;
+            require(egp > 0, "sim failed");
 
             bundleRes = Bundle.sendBundle(GOERLI_BUNDLE_RPC, bundleObj);
             require(
-                // this hex is '{"id":1,"result"'
+                // this hex is '{"id":1,"result":{"bundleHash":"'
                 // close-enough way to check for successful sendBundle call
-                bytes16(bundleRes) == 0x7b226964223a312c22726573756c7422,
+                bytes32(bundleRes) == 0x7b226964223a312c22726573756c74223a7b2262756e646c6548617368223a22,
                 "bundle failed"
             );
         }
@@ -214,6 +217,6 @@ contract Intents {
         // ... right now we just assume the bundle landed
 
         // trigger `onFulfilledIntent`
-        suaveCallData = encodeOnFulfillIntent(orderId, bundleRes);
+        suaveCallData = encodeOnFulfillIntent(orderId, abi.encode(bundleRes, egps));
     }
 }
