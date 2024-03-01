@@ -12,7 +12,7 @@ func main() {
 	priv := "b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291"
 
 	contract := fr.Suave.DeployContract("transaction-signing.sol/TransactionSigning.json")
-	receipt := contract.SendTransaction("example", nil, []byte(priv))
+	receipt := contract.SendConfidentialRequest("example", nil, []byte(priv))
 
 	// validate the signature
 	txnSignatureEvent, err := contract.Abi.Events["TxnSignature"].ParseLog(receipt.Logs[0])

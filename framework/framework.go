@@ -107,7 +107,7 @@ func GeneratePrivKey() *PrivKey {
 }
 
 type Contract struct {
-	*sdk.Contract
+	contract *sdk.Contract
 
 	clt        *sdk.Client
 	kettleAddr common.Address
@@ -139,14 +139,14 @@ func (c *Contract) Call(methodName string) []interface{} {
 }
 
 func (c *Contract) Raw() *sdk.Contract {
-	return c.Contract
+	return c.contract
 }
 
 var executionRevertedPrefix = "execution reverted: 0x"
 
-// SendTransaction sends the transaction and panics if it fails
-func (c *Contract) SendTransaction(method string, args []interface{}, confidentialBytes []byte) *types.Receipt {
-	txnResult, err := c.Contract.SendTransaction(method, args, confidentialBytes)
+// SendConfidentialRequest sends the confidential request to the kettle
+func (c *Contract) SendConfidentialRequest(method string, args []interface{}, confidentialBytes []byte) *types.Receipt {
+	txnResult, err := c.contract.SendTransaction(method, args, confidentialBytes)
 	if err != nil {
 		// decode the PeekerReverted error
 		errMsg := err.Error()
@@ -276,7 +276,7 @@ func (c *Chain) DeployContract(path string) *Contract {
 	log.Printf("deployed contract at %s", receipt.ContractAddress.Hex())
 
 	contract := sdk.GetContract(receipt.ContractAddress, artifact.Abi, c.clt)
-	return &Contract{addr: receipt.ContractAddress, clt: c.clt, kettleAddr: c.kettleAddr, Abi: artifact.Abi, Contract: contract}
+	return &Contract{addr: receipt.ContractAddress, clt: c.clt, kettleAddr: c.kettleAddr, Abi: artifact.Abi, contract: contract}
 }
 
 func (c *Contract) Ref(acct *PrivKey) *Contract {
@@ -285,7 +285,7 @@ func (c *Contract) Ref(acct *PrivKey) *Contract {
 	cc := &Contract{
 		addr:     c.addr,
 		Abi:      c.Abi,
-		Contract: sdk.GetContract(c.addr, c.Abi, clt),
+		contract: sdk.GetContract(c.addr, c.Abi, clt),
 	}
 	return cc
 }

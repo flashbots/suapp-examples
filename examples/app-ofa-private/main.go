@@ -90,7 +90,7 @@ func main() {
 	log.Printf("Latest goerli block: %d", target)
 
 	// new dataRecord inputs
-	receipt := contract.SendTransaction("newOrder", []interface{}{target + 1}, bundleBytes)
+	receipt := contract.SendConfidentialRequest("newOrder", []interface{}{target + 1}, bundleBytes)
 
 	hintEvent := &HintEvent{}
 	if err := hintEvent.Unpack(receipt.Logs[0]); err != nil {
@@ -115,7 +115,7 @@ func main() {
 	log.Printf("Latest goerli block: %d", target)
 
 	// backrun inputs
-	receipt = contract.SendTransaction("newMatch", []interface{}{hintEvent.DataRecordId, target + 1}, backRunBundleBytes)
+	receipt = contract.SendConfidentialRequest("newMatch", []interface{}{hintEvent.DataRecordId, target + 1}, backRunBundleBytes)
 
 	matchEvent := &HintEvent{}
 	if err := matchEvent.Unpack(receipt.Logs[0]); err != nil {
@@ -127,7 +127,7 @@ func main() {
 	// Step 4. Emit the batch to the relayer and parse the output
 	fmt.Println("4. Emit batch")
 
-	receipt = contract.SendTransaction("emitMatchDataRecordAndHint", []interface{}{cfg.BuilderURL, matchEvent.DataRecordId}, backRunBundleBytes)
+	receipt = contract.SendConfidentialRequest("emitMatchDataRecordAndHint", []interface{}{cfg.BuilderURL, matchEvent.DataRecordId}, backRunBundleBytes)
 	bundleHash, err := decodeBundleEmittedOutput(receipt)
 	if err != nil {
 		log.Fatal(err)
