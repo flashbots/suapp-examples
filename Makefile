@@ -34,3 +34,4 @@ run-integration:
 	go run examples/onchain-callback/main.go 
 	go run examples/onchain-state/main.go
 	go run examples/offchain-logs/main.go
+	go run examples/mevm-context/main.go
