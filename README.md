@@ -21,10 +21,6 @@ Writings:
 ```bash
 # Clone this repository
 git clone https://github.com/flashbots/suapp-examples.git
-
-# Checkout the suave-geth submodule
-git submodule init
-git submodule update
 ```
 
 ---
@@ -36,6 +32,12 @@ Install [Foundry](https://getfoundry.sh/):
 ```bash
 curl -L https://foundry.paradigm.xyz | bash
 foundryup
+```
+
+Install dependencies:
+
+```bash
+forge install
 ```
 
 Compile:

@@ -7,5 +7,5 @@ import (
 func main() {
 	fr := framework.New()
 	fr.Suave.DeployContract("is-confidential.sol/IsConfidential.json").
-		SendTransaction("example", nil, nil)
+		SendConfidentialRequest("example", nil, nil)
 }

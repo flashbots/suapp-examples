@@ -12,12 +12,12 @@ func main() {
 	suapp := fr.Suave.DeployContract("lib-confidential-store.sol/PublicSuapp.json")
 
 	// Deploy the contract and get the bid id
-	receipt := suapp.SendTransaction("registerContract", nil, privateLibrary.Code)
+	receipt := suapp.SendConfidentialRequest("registerContract", nil, privateLibrary.Code)
 	event, _ := contractRegisteredABI.Inputs.Unpack(receipt.Logs[0].Data)
 	privateContractBidId := event[0].([16]byte)
 
 	// Use the private contract
-	suapp.SendTransaction("example", []interface{}{privateContractBidId}, nil)
+	suapp.SendConfidentialRequest("example", []interface{}{privateContractBidId}, nil)
 }
 
 var contractRegisteredABI abi.Event

@@ -107,17 +107,17 @@ func GeneratePrivKey() *PrivKey {
 }
 
 type Contract struct {
-	*sdk.Contract
+	contract *sdk.Contract
 
 	clt        *sdk.Client
 	kettleAddr common.Address
 
 	addr common.Address
-	abi  *abi.ABI
+	Abi  *abi.ABI
 }
 
 func (c *Contract) Call(methodName string) []interface{} {
-	input, err := c.abi.Pack(methodName)
+	input, err := c.Abi.Pack(methodName)
 	if err != nil {
 		panic(err)
 	}
@@ -131,7 +131,7 @@ func (c *Contract) Call(methodName string) []interface{} {
 		panic(err)
 	}
 
-	results, err := c.abi.Methods[methodName].Outputs.Unpack(output)
+	results, err := c.Abi.Methods[methodName].Outputs.Unpack(output)
 	if err != nil {
 		panic(err)
 	}
@@ -139,14 +139,14 @@ func (c *Contract) Call(methodName string) []interface{} {
 }
 
 func (c *Contract) Raw() *sdk.Contract {
-	return c.Contract
+	return c.contract
 }
 
 var executionRevertedPrefix = "execution reverted: 0x"
 
-// SendTransaction sends the transaction and panics if it fails
-func (c *Contract) SendTransaction(method string, args []interface{}, confidentialBytes []byte) *types.Receipt {
-	txnResult, err := c.Contract.SendTransaction(method, args, confidentialBytes)
+// SendConfidentialRequest sends the confidential request to the kettle
+func (c *Contract) SendConfidentialRequest(method string, args []interface{}, confidentialBytes []byte) *types.Receipt {
+	txnResult, err := c.contract.SendTransaction(method, args, confidentialBytes)
 	if err != nil {
 		// decode the PeekerReverted error
 		errMsg := err.Error()
@@ -177,7 +177,7 @@ func (c *Contract) SendTransaction(method string, args []interface{}, confidenti
 
 type Framework struct {
 	config        *Config
-	kettleAddress common.Address
+	KettleAddress common.Address
 
 	Suave *Chain
 	L1    *Chain
@@ -186,20 +186,35 @@ type Framework struct {
 type Config struct {
 	KettleRPC string `env:"KETTLE_RPC, default=http://localhost:8545"`
 
-	// This account is funded in your local L1 devnet
+	// This account is funded in your local SUAVE devnet
+	// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
 	FundedAccount *PrivKey `env:"KETTLE_PRIVKEY, default=91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"`
 
 	L1RPC string `env:"L1_RPC, default=http://localhost:8555"`
 
-	// This account is funded in your local SUAVE devnet
-	// address: 0xBE69d72ca5f88aCba033a063dF5DBe43a4148De0
-	FundedAccountL1 *PrivKey `env:"L1_PRIVKEY, default=91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"`
+	// This account is funded in your local L1 devnet
+	// address: 0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F
+	FundedAccountL1 *PrivKey `env:"L1_PRIVKEY, default=6c45335a22461ccdb978b78ab61b238bad2fae4544fb55c14eb096c875ccfc52"`
+
+	// Whether to enable L1 or not
+	L1Enabled bool
 }
 
-func New() *Framework {
+type ConfigOption func(c *Config)
+
+func WithL1() ConfigOption {
+	return func(c *Config) {
+		c.L1Enabled = true
+	}
+}
+
+func New(opts ...ConfigOption) *Framework {
 	var config Config
 	if err := envconfig.Process(context.Background(), &config); err != nil {
 		log.Fatal(err)
+	}
+	for _, opt := range opts {
+		opt(&config)
 	}
 
 	kettleRPC, err := rpc.Dial(config.KettleRPC)
@@ -214,18 +229,22 @@ func New() *Framework {
 
 	suaveClt := sdk.NewClient(kettleRPC, config.FundedAccount.Priv, accounts[0])
 
-	l1RPC, err := rpc.Dial(config.L1RPC)
-	if err != nil {
-		panic(err)
-	}
-	l1Clt := sdk.NewClient(l1RPC, config.FundedAccountL1.Priv, common.Address{})
-
-	return &Framework{
+	fr := &Framework{
 		config:        &config,
-		kettleAddress: accounts[0],
+		KettleAddress: accounts[0],
 		Suave:         &Chain{rpc: kettleRPC, clt: suaveClt, kettleAddr: accounts[0]},
-		L1:            &Chain{rpc: l1RPC, clt: l1Clt},
 	}
+
+	if config.L1Enabled {
+		l1RPC, err := rpc.Dial(config.L1RPC)
+		if err != nil {
+			panic(err)
+		}
+		l1Clt := sdk.NewClient(l1RPC, config.FundedAccountL1.Priv, common.Address{})
+		fr.L1 = &Chain{rpc: l1RPC, clt: l1Clt}
+	}
+
+	return fr
 }
 
 type Chain struct {
@@ -257,7 +276,7 @@ func (c *Chain) DeployContract(path string) *Contract {
 	log.Printf("deployed contract at %s", receipt.ContractAddress.Hex())
 
 	contract := sdk.GetContract(receipt.ContractAddress, artifact.Abi, c.clt)
-	return &Contract{addr: receipt.ContractAddress, clt: c.clt, kettleAddr: c.kettleAddr, abi: artifact.Abi, Contract: contract}
+	return &Contract{addr: receipt.ContractAddress, clt: c.clt, kettleAddr: c.kettleAddr, Abi: artifact.Abi, contract: contract}
 }
 
 func (c *Contract) Ref(acct *PrivKey) *Contract {
@@ -265,8 +284,8 @@ func (c *Contract) Ref(acct *PrivKey) *Contract {
 
 	cc := &Contract{
 		addr:     c.addr,
-		abi:      c.abi,
-		Contract: sdk.GetContract(c.addr, c.abi, clt),
+		Abi:      c.Abi,
+		contract: sdk.GetContract(c.addr, c.Abi, clt),
 	}
 	return cc
 }
