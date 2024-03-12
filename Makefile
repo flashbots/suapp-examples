@@ -30,7 +30,7 @@ lt: lint test
 devnet-up:
 	@kurtosis run \
 			--enclave eth-devnet \
-		github.com/kurtosis-tech/ethereum-package \
+		github.com/kurtosis-tech/ethereum-package@1.4.0 \
 			"$$( cat ./devnet/kurtosis.yaml )"
 	@kurtosis service stop eth-devnet mev-flood
 	@docker compose --file ./devnet/docker-compose.yaml up --detach

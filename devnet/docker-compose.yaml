@@ -10,7 +10,7 @@ volumes:
 
 services:
   suave-mevm:
-    image: flashbots/suave-geth:v0.1.0-dev-03
+    image: flashbots/suave-geth:v0.1.3
     container_name: suave-mevm
     command: [
       "-dev",
