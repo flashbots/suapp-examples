@@ -90,7 +90,7 @@ forge build
 Above setup will (among other things) deploy:
 
 - SUAVE devnet RPC on `http://127.0.0.1:8545`
-- Eth devnet RPC on `http://127.0.0.1:8545`
+- Eth devnet RPC on `http://127.0.0.1:8555`
 - SUAVE explorer on `http://127.0.0.1:8080`
 - Eth explorer on `http://127.0.0.1:18080`
 - MEV Boost Relay Overview on `http://127.0.0.1:9060`
