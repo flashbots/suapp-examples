@@ -38,7 +38,7 @@ devnet-up:
 .PHONY: devnet-down
 devnet-down:
 	@docker compose --file ./devnet/docker-compose.yaml down
-	@docker volume rm e2e_suave-blockscout-db-data || true
+	@docker volume rm devnet_suave-blockscout-db-data || true
 	@kurtosis enclave stop eth-devnet
 	@kurtosis enclave rm eth-devnet
 	@kurtosis engine stop
