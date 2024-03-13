@@ -6,7 +6,6 @@ import {Bundle} from "lib/suave-std/src/protocols/Bundle.sol";
 import {Transactions} from "lib/suave-std/src/Transactions.sol";
 import {UniV2Swop, SwapExactTokensForTokensRequest, TxMeta} from "./libraries/SwopLib.sol";
 import {LibString} from "lib/suave-std/lib/solady/src/utils/LibString.sol";
-import {LibSort} from "lib/suave-std/lib/solady/src/utils/LibSort.sol";
 
 /// Limit order for a swap. Used as a simple example for intents delivery system.
 struct LimitOrder {
@@ -35,12 +34,15 @@ struct FulfillIntentBundle {
 }
 
 contract Intents {
+    using Bundle for Bundle.BundleObj;
+
     // we probably shouldn't be storing intents in contract storage
     // TODO: make a stateless or ConfidentialStore-based design
     mapping(bytes32 => LimitOrderPublic) public intentsPending;
     string public constant GOERLI_BUNDLE_RPC = "https://relay-goerli.flashbots.net";
     string public constant GOERLI_ETH_RPC = "https://rpc-goerli.flashbots.net";
     bytes2 public constant TX_PLACEHOLDER = 0xf00d;
+    uint8 private immutable NUM_TARGET_BLOCKS = 10;
 
     event Test(uint64 num);
     event Test(bytes res);
@@ -189,8 +191,8 @@ contract Intents {
         // simulate bundle for each of the next 10 blocks
         bytes memory bundleRes;
         Bundle.BundleObj memory bundleObj;
-        uint256[] memory egps = new uint256[](10);
-        for (uint8 i = 0; i < 10; i++) {
+        uint256[] memory egps = new uint256[](NUM_TARGET_BLOCKS);
+        for (uint8 i = 0; i < NUM_TARGET_BLOCKS; i++) {
             bundleObj = Bundle.BundleObj({
                 blockNumber: uint64(bundle.blockNumber + i),
                 txns: bundle.txs,
@@ -201,21 +203,18 @@ contract Intents {
                 refundPercent: 0
             });
             // returns effective gas price (egp) for the bundle
-            uint256 egp = uint256(Bundle.simulateBundle(bundleObj));
-            egps[i] = egp;
+            uint256 egp = uint256(bundleObj.simulateBundle());
             require(egp > 0, "sim failed");
-        }
-
-        // send bundles targeting the top 3 egps from the simulation step
-        LibSort.insertionSort(egps);
-        for (uint8 i = 0; i < 3; i++) {
-            bundleRes = Bundle.sendBundle(GOERLI_BUNDLE_RPC, bundleObj);
-            require(
-                // this hex is '{"id":1,"result":{"bundleHash":"'
-                // close-enough way to check for successful sendBundle call
-                bytes32(bundleRes) == 0x7b226964223a312c22726573756c74223a7b2262756e646c6548617368223a22,
-                "bundle failed"
-            );
+            egps[i] = egp;
+            if (egp > 1000000) {
+                bundleRes = bundleObj.sendBundle(GOERLI_BUNDLE_RPC);
+                require(
+                    // this hex is '{"id":1,"result":{"bundleHash":"'
+                    // close-enough way to check for successful sendBundle call
+                    bytes32(bundleRes) == 0x7b226964223a312c22726573756c74223a7b2262756e646c6548617368223a22,
+                    "bundle failed"
+                );
+            }
         }
 
         // TODO: build a mechanism to check for inclusion

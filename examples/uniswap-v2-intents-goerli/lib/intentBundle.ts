@@ -131,7 +131,7 @@ export class FulfillIntentRequest<T extends Transport> implements IFulfillIntent
             confidentialInputs: this.confidentialInputsBytes(),
             kettleAddress: this.kettleAddress,
             gasPrice: feeData.baseFeePerGas[0] || 10000000000n,
-            gas: 2500111n,
+            gas: 30000000n,
             type: SuaveTxRequestTypes.ConfidentialRequest,
         }
     }

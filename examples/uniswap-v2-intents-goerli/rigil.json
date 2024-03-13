@@ -1,15 +1,15 @@
 {
-    "goerli": {
-        "uniV2Router": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
-        "uniV2Factory": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
-        "uniV2Pair": "0x817Bd8e6909BB73cB0976d7c4A0e02c91350a383",
-        "weth": "0x37e180773D995c8CEE9dB5e63DE40330Ebf3C172",
-        "dai": "0xCD5fF331F1a417D8dEd7CFCe447c09256D7Cd6b6"
-    },
-    "suave": {
-        "intentRouter": "0xbe1436bc7b6f9740330080b3fe01e74bd82edc4a",
-        "defaultAdminKey": "0x91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12",
-        "localKettleAddress": "0xb5feafbdd752ad52afb7e1bd2e40432a485bbb7f",
-        "testnetKettleAddress": "0x03493869959c866713c33669ca118e774a30a0e5"
-    }
+  "goerli": {
+    "uniV2Router": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+    "uniV2Factory": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+    "uniV2Pair": "0x817Bd8e6909BB73cB0976d7c4A0e02c91350a383",
+    "weth": "0x37e180773D995c8CEE9dB5e63DE40330Ebf3C172",
+    "dai": "0xCD5fF331F1a417D8dEd7CFCe447c09256D7Cd6b6"
+  },
+  "suave": {
+    "intentRouter": "0xffdf8111894f48d1ac6ca8d1fd7180279a09e972",
+    "defaultAdminKey": "0x91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12",
+    "localKettleAddress": "0xb5feafbdd752ad52afb7e1bd2e40432a485bbb7f",
+    "testnetKettleAddress": "0x03493869959c866713c33669ca118e774a30a0e5"
+  }
 }
