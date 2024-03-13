@@ -6,6 +6,7 @@ import {Bundle} from "lib/suave-std/src/protocols/Bundle.sol";
 import {Transactions} from "lib/suave-std/src/Transactions.sol";
 import {UniV2Swop, SwapExactTokensForTokensRequest, TxMeta} from "./libraries/SwopLib.sol";
 import {LibString} from "lib/suave-std/lib/solady/src/utils/LibString.sol";
+import {LibSort} from "lib/suave-std/lib/solady/src/utils/LibSort.sol";
 
 /// Limit order for a swap. Used as a simple example for intents delivery system.
 struct LimitOrder {
@@ -185,25 +186,29 @@ contract Intents {
             }
         }
 
-        // encode & send bundle request for each of the next 10 blocks
+        // simulate bundle for each of the next 10 blocks
         bytes memory bundleRes;
         Bundle.BundleObj memory bundleObj;
-        uint64[] memory egps = new uint64[](10);
+        uint256[] memory egps = new uint256[](10);
         for (uint8 i = 0; i < 10; i++) {
             bundleObj = Bundle.BundleObj({
                 blockNumber: uint64(bundle.blockNumber + i),
+                txns: bundle.txs,
                 minTimestamp: 0,
                 maxTimestamp: 0,
-                txns: bundle.txs,
                 revertingHashes: new bytes32[](0),
-                refundPercent: 80
+                replacementUuid: "",
+                refundPercent: 0
             });
-
-            // simulate bundle and revert if it fails
-            uint64 egp = Bundle.simulateBundle(bundleObj);
+            // returns effective gas price (egp) for the bundle
+            uint256 egp = uint256(Bundle.simulateBundle(bundleObj));
             egps[i] = egp;
             require(egp > 0, "sim failed");
+        }
 
+        // send bundles targeting the top 3 egps from the simulation step
+        LibSort.insertionSort(egps);
+        for (uint8 i = 0; i < 3; i++) {
             bundleRes = Bundle.sendBundle(GOERLI_BUNDLE_RPC, bundleObj);
             require(
                 // this hex is '{"id":1,"result":{"bundleHash":"'
