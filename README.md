@@ -6,13 +6,13 @@ This repository contains several [examples and useful references](/examples/) fo
 
 See also:
 
-- **https://github.com/flashbots/suave-geth**
-- https://collective.flashbots.net/c/suave/27
+- [suave-geth source](https://github.com/flashbots/suave-geth)
+- [Flashbots Collective: SUAVE Forum](https://collective.flashbots.net/c/suave/27)
 
 Writings:
 
-- https://writings.flashbots.net/the-future-of-mev-is-suave
-- https://writings.flashbots.net/mevm-suave-centauri-and-beyond
+- [The Future of MEV is SUAVE](https://writings.flashbots.net/the-future-of-mev-is-suave)
+- [The MEVM, SUAVE Centauri, and Beyond](https://writings.flashbots.net/mevm-suave-centauri-and-beyond)
 
 ---
 
@@ -20,11 +20,7 @@ Writings:
 
 ```bash
 # Clone this repository
-$ git clone git@github.com:flashbots/suapp-examples.git
-
-# Checkout the suave-geth submodule
-$ git submodule init
-$ git submodule update
+git clone https://github.com/flashbots/suapp-examples.git
 ```
 
 ---
@@ -33,21 +29,28 @@ $ git submodule update
 
 Install [Foundry](https://getfoundry.sh/):
 
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
 ```
-$ curl -L https://foundry.paradigm.xyz | bash
+
+Install dependencies:
+
+```bash
+forge install
 ```
 
 Compile:
 
 ```bash
-$ forge build
+forge build
 ```
 
 ---
 
 ## Start the local devnet
 
-See the instructions here: https://github.com/flashbots/suave-geth#starting-a-local-devnet
+See the instructions in [suave-geth](https://github.com/flashbots/suave-geth#starting-a-local-devnet).
 
 ---
 
