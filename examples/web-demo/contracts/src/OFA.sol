@@ -23,10 +23,9 @@ contract OFAPrivate {
         // Retrieve the bundle data from the confidential inputs
         bytes memory bundleData = Suave.confidentialInputs();
         Bundle.BundleObj memory bundle = abi.decode(bundleData, (Bundle.BundleObj));
-        bundleData = Bundle.encodeBundle(bundle).body;
 
         // Simulate the bundle and extract its score.
-        uint64 egp = Suave.simulateBundle(bundleData);
+        uint64 egp = Bundle.simulateBundle(bundle);
 
         // Extract a hint about this bundle that is going to be leaked
         // to external applications.
