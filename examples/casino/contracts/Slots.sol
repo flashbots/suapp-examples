@@ -3,6 +3,7 @@ pragma solidity ^0.8.16;
 
 import "./CasinoLib.sol";
 import "suave-std/suavelib/Suave.sol";
+import {Random} from "suave-std/Random.sol";
 
 contract SlotMachines {
     mapping(uint256 => CasinoLib.SlotMachine) public slotMachines;
@@ -65,7 +66,7 @@ contract SlotMachines {
         require(chipsBalance[msg.sender] >= betAmount, "insufficient funds deposited");
         CasinoLib.SlotMachine memory machine = slotMachines[slotId];
         require(betAmount >= machine.minBet, "must place at least minimum bet");
-        uint256 randomNum = Suave.randomUint256();
+        uint256 randomNum = Random.randomUint256();
         suave_call_data = encodeOnSlotPulled(betAmount, slotId, randomNum);
     }
 

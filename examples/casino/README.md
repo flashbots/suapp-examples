@@ -6,14 +6,16 @@ This example deploys the [Slots](./contracts/Slots.sol) contract to a local SUAV
 
 ## instructions
 
-First, install smart contract dependencies and build our contracts:
+See [the docs](https://suave-alpha.flashbots.net/tutorials/run-suave) for instructions to spin up a local devenet.
+
+Install smart contract dependencies and build our contracts:
 
 ```bash
 forge install
 forge build
 ```
 
-To install bun dependencies:
+Install bun dependencies:
 
 ```bash
 bun install
