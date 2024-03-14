@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
-import {CasinoLib} from "./CasinoLibV2.sol";
+import {CasinoLib} from "./CasinoLib.sol";
 
 contract CasinoLibV2Test is Test {
     function test_extractNumberDiagonalDown() public returns (uint256 number) {

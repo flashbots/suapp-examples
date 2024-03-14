@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import "./CasinoLibV2.sol";
+import "./CasinoLib.sol";
 import "suave-std/suavelib/Suave.sol";
 import {Random} from "suave-std/Random.sol";
 
