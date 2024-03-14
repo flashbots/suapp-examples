@@ -10,7 +10,9 @@ library CasinoLib {
 
     uint8 public constant NUM_COLS_ROWS = 3;
     uint8 public constant NUM_VALUES = 10;
+    uint256 private constant SCALAR = 10 ** 9;
     uint256 public constant BASE_MULTIPLIER = 5;
+    uint256 public constant JACKPOT_DIGIT = 7;
 
     struct SlotMachine {
         /// counter for the number of pulls done on this machine
@@ -35,23 +37,23 @@ library CasinoLib {
      *   |-------------------|-----------|
      *   | condition         | payout    |
      *   |-------------------|-----------|
-     *   | BASE WIN          | +  10*bet |
-     *   | MIDDLE ROW WIN    | +   3*bet |
-     *   | DIAGONAL WIN      | +   2*bet |
+     *   | HORIZONTAL MATCH  | +   2*bet |
+     *   | MIDDLE ROW MATCH  | +   3*bet |
+     *   | DIAGONAL MATCH    | +   2*bet |
      *   | 7s                | +  10*bet |
      *   |-------------------|-----------|
      *
      * board definition:
-     *   0 4 9
-     *   1 3 0
-     *   2 2 1
+     *   - NxN board
+     *   - V possible values in {0, 1, 2, ..., V-1}
+     *   - numbers change in a column by 1 per row
+     *   - odd columns are reversed
      *
-     *   NxN board
-     *   V possible values in {0, 1, 2, ..., V-1}
-     *   numbers change in a column by 1 per row
-     *   odd columns are reversed
+     *   example:   0 4 9
+     *              1 3 0
+     *              2 2 1   (bad spin, no win conditions met)
      *
-     * examples:
+     * more examples:
      *   1.  board:          0 4 9  . . .
      *                       1 3 0  . . .
      *                       2 2 1  . . .
@@ -97,16 +99,12 @@ library CasinoLib {
      *                       9 6 7   . . \
      *       payout:         (10 * 10 * 2) * bet
      */
-    function calculateSlotPull(
-        uint256 betAmount,
-        uint8[NUM_COLS_ROWS] memory randomNums
-    ) internal pure returns (uint256 payout, uint256 rollValue) {
-        require(
-            NUM_COLS_ROWS % 2 == 1,
-            "NUM_COLS_ROWS must be odd because the middle row is special."
-        );
-
-        /* ...calculate payout conditions... */
+    function calculateSlotPull(uint256 betAmount, uint8[NUM_COLS_ROWS] memory randomNums)
+        internal
+        pure
+        returns (uint256 payout, uint256 rollValue)
+    {
+        require(NUM_COLS_ROWS % 2 == 1, "NUM_COLS_ROWS must be odd because the middle row is special.");
 
         // base win multiplier is set optimistically, then checked @ end; if it's still 10, set to 0.
         uint256 multiplier = BASE_MULTIPLIER;
@@ -124,11 +122,7 @@ library CasinoLib {
             multiplier = _applyDiagonalMultiplier(multiplier);
         }
         // check for jackpot; only one of the conditionals is possible at a time
-        if (
-            isJackpot(rollValue) ||
-            isJackpot(diagonalDownValue) ||
-            isJackpot(diagonalUpValue)
-        ) {
+        if (isJackpot(rollValue) || isJackpot(diagonalDownValue) || isJackpot(diagonalUpValue)) {
             multiplier = _applyJackpot(multiplier);
         }
 
@@ -149,7 +143,7 @@ library CasinoLib {
         }
 
         if (multiplier == BASE_MULTIPLIER) {
-            // multiplier was never changed; no win. wins will always be >10x
+            // multiplier never increased, which means no win
             multiplier = 0;
         }
 
@@ -165,10 +159,20 @@ library CasinoLib {
         return randomNums;
     }
 
+    /**
+     * Creates a uint256 comprised of ones.
+     * @param numDigits The number of digits to create. Must be > 0 else reverts.
+     * @return mask uint256 with `numDigits` ones.
+     *
+     *  ```
+     *  require(_oneMask(3) == 111);
+     *  require(_oneMask(8) == 11111111);
+     *  ```
+     */
     function _oneMask(uint8 numDigits) internal pure returns (uint256 mask) {
         require(numDigits > 0, "numDigits must be > 0");
-        for (uint8 i = 0; i < numDigits; i++) {
-            mask += (10 ** i);
+        for (uint256 i = 0; i < numDigits; i++) {
+            mask += (uint256(NUM_VALUES) ** i);
         }
     }
 
@@ -176,67 +180,75 @@ library CasinoLib {
         return value % _oneMask(NUM_COLS_ROWS) == 0;
     }
 
-    /// A jackpot is all 7s.
+    /// A jackpot is all JACKPOT_DIGITs in a row.
     function isJackpot(uint256 value) internal pure returns (bool) {
-        return value > 0 && value % (_oneMask(NUM_COLS_ROWS) * 7) == 0;
+        return value == (_oneMask(NUM_COLS_ROWS) * JACKPOT_DIGIT);
     }
 
-    /// Convert
-    function _extractRowNumber(
-        uint8[NUM_COLS_ROWS] memory randomNums,
-        uint8 rowIndex
-    ) internal pure returns (uint256 number) {
-        // each column shifts +- 1 per rowIndex
+    /**
+     *  Convert a row of random numbers into a single number.
+     *  Used to calculate slot machine win conditions.
+     *  Each digit shifts +1 or -1 per row; +1 if its column index is even, -1 if odd.
+     *  @param randomNums An array of random numbers to extract a single uint from.
+     *  @param rowIndex The index of the row to extract.
+     *  @return number The number extracted from the row.
+     *
+     *  Example:
+     *  ```
+     *  uint8[3] memory randomNums = [1, 4, 9];
+     *  require(_extractRowNumber(randomNums, 0) == 149);
+     *
+     *  // changing rowIndex will change the number to reflect the slot column design
+     *  require(_extractRowNumber(randomNums, 1) == 230);
+     *  ```
+     */
+    function _extractRowNumber(uint8[NUM_COLS_ROWS] memory randomNums, uint8 rowIndex)
+        internal
+        pure
+        returns (uint256 number)
+    {
         for (uint8 j = 0; j < NUM_COLS_ROWS; j++) {
-            number += _shiftDigits(randomNums[j], rowIndex, j);
+            number += _shiftDigit(randomNums[j], rowIndex, j);
         }
     }
 
-    /// Shift a single digit in a number by an amount specified by rowIndex, in a direction specified by (columnIndex % 2)
-    function _shiftDigits(
-        uint256 baseNumber,
-        uint8 rowIndex,
-        uint8 columnIndex
-    ) internal pure returns (uint256 number) {
+    /**
+     * Shift a single digit in a number by an amount specified by rowIndex, in a direction specified by (columnIndex % 2).
+     * This defines the the slot machine's rows/columns.
+     * @param baseNumber The number to shift.
+     * @param rowIndex The index of the row to shift.
+     * @param columnIndex The index of the column to shift.
+     * @return number The shifted number.
+     */
+    function _shiftDigit(uint256 baseNumber, uint8 rowIndex, uint8 columnIndex)
+        internal
+        pure
+        returns (uint256 number)
+    {
         if (columnIndex % 2 == 0) {
-            number +=
-                ((baseNumber + rowIndex) % NUM_VALUES) *
-                (NUM_VALUES ** (NUM_COLS_ROWS - columnIndex - 1));
+            // even digits +1 per row
+            number += ((baseNumber + rowIndex) % NUM_VALUES) * (NUM_VALUES ** (NUM_COLS_ROWS - columnIndex - 1));
         } else {
-            // odd columns decrement per row
+            // odd digits -1 per row
             if (baseNumber < (NUM_COLS_ROWS - 1)) {
-                // protect from underflow
+                // round robin
                 baseNumber += NUM_VALUES;
             }
-            number +=
-                ((baseNumber - rowIndex) % NUM_VALUES) *
-                (NUM_VALUES ** (NUM_COLS_ROWS - columnIndex - 1));
+            number += ((baseNumber - rowIndex) % NUM_VALUES) * (NUM_VALUES ** (NUM_COLS_ROWS - columnIndex - 1));
         }
     }
 
-    function _extractNumberDiagonalDown(
-        uint256 baseNumber
-    ) internal pure returns (uint256 number) {
+    function _extractNumberDiagonalDown(uint256 baseNumber) internal pure returns (uint256 number) {
         for (uint8 i = 0; i < NUM_COLS_ROWS; i++) {
             uint256 factor = NUM_VALUES ** (NUM_COLS_ROWS - i - 1);
-            number += _shiftDigits(
-                (baseNumber - (baseNumber % factor)) / factor,
-                i,
-                i
-            );
+            number += _shiftDigit((baseNumber - (baseNumber % factor)) / factor, i, i);
         }
     }
 
-    function _extractNumberDiagonalUp(
-        uint256 baseNumber
-    ) internal pure returns (uint256 number) {
+    function _extractNumberDiagonalUp(uint256 baseNumber) internal pure returns (uint256 number) {
         for (uint8 i = 0; i < NUM_COLS_ROWS; i++) {
             uint256 factor = NUM_VALUES ** (NUM_COLS_ROWS - i - 1);
-            number += _shiftDigits(
-                (baseNumber - (baseNumber % factor)) / factor,
-                NUM_COLS_ROWS - i - 1,
-                i
-            );
+            number += _shiftDigit((baseNumber - (baseNumber % factor)) / factor, NUM_COLS_ROWS - i - 1, i);
         }
     }
 
@@ -249,38 +261,26 @@ library CasinoLib {
     }
 
     function _applyJackpot(uint256 multiplier) internal pure returns (uint256) {
-        return multiplier * 10;
+        return multiplier * 13;
     }
 
-    function _applyHorizontalMultiplier(
-        uint256 multiplier
-    ) internal pure returns (uint256) {
+    function _applyHorizontalMultiplier(uint256 multiplier) internal pure returns (uint256) {
         return multiplier * 2;
     }
 
-    function _applyMiddleRowMultiplier(
-        uint256 multiplier
-    ) internal pure returns (uint256) {
-        return multiplier * 3;
+    function _applyMiddleRowMultiplier(uint256 multiplier) internal pure returns (uint256) {
+        return multiplier * 5;
     }
 
-    function _applyDiagonalMultiplier(
-        uint256 multiplier
-    ) internal pure returns (uint256) {
-        return multiplier * 2;
+    function _applyDiagonalMultiplier(uint256 multiplier) internal pure returns (uint256) {
+        return ((multiplier * SCALAR * 5) / 2) / SCALAR;
     }
 
-    function boardToString(
-        uint8[NUM_COLS_ROWS] memory randomNums
-    ) internal pure returns (string memory result) {
+    /// Returns a string representing the slot machine panels the user sees.
+    /// Format: "123\n456\n789\n"
+    function boardToString(uint8[NUM_COLS_ROWS] memory randomNums) internal pure returns (string memory result) {
         for (uint8 i = 0; i < NUM_COLS_ROWS; i++) {
-            result = string(
-                abi.encodePacked(
-                    result,
-                    _extractRowNumber(randomNums, i).toString(),
-                    "\n"
-                )
-            );
+            result = string(abi.encodePacked(result, _extractRowNumber(randomNums, i).toString(), "\n"));
         }
     }
 }

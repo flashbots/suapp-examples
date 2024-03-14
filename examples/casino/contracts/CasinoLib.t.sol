@@ -99,46 +99,78 @@ contract CasinoLibV2Test is Test {
     }
 
     function test_shiftDigits() public {
-        uint256 shiftedNumber = CasinoLib._shiftDigits(7, 0, 0);
+        uint256 shiftedNumber = CasinoLib._shiftDigit(7, 0, 0);
         console2.log("shifted num (7,0,0)", shiftedNumber);
         assertEq(shiftedNumber, 700);
 
-        shiftedNumber = CasinoLib._shiftDigits(7, 0, 1);
+        shiftedNumber = CasinoLib._shiftDigit(7, 0, 1);
         console2.log("shifted num (7,0,1)", shiftedNumber);
         assertEq(shiftedNumber, 70);
 
-        shiftedNumber = CasinoLib._shiftDigits(7, 0, 2);
+        shiftedNumber = CasinoLib._shiftDigit(7, 0, 2);
         console2.log("shifted num (7,0,2)", shiftedNumber);
         assertEq(shiftedNumber, 7);
 
         console2.log("777");
 
-        shiftedNumber = CasinoLib._shiftDigits(7, 1, 0);
+        shiftedNumber = CasinoLib._shiftDigit(7, 1, 0);
         console2.log("shifted num (7,1,0)", shiftedNumber);
         assertEq(shiftedNumber, 800);
 
-        shiftedNumber = CasinoLib._shiftDigits(7, 1, 1);
+        shiftedNumber = CasinoLib._shiftDigit(7, 1, 1);
         console2.log("shifted num (7,1,1)", shiftedNumber);
         assertEq(shiftedNumber, 60);
 
-        shiftedNumber = CasinoLib._shiftDigits(7, 1, 2);
+        shiftedNumber = CasinoLib._shiftDigit(7, 1, 2);
         console2.log("shifted num (7,1,2)", shiftedNumber);
         assertEq(shiftedNumber, 8);
 
         console2.log("868");
 
-        shiftedNumber = CasinoLib._shiftDigits(7, 2, 0);
+        shiftedNumber = CasinoLib._shiftDigit(7, 2, 0);
         console2.log("shifted num (7,2,0)", shiftedNumber);
         assertEq(shiftedNumber, 900);
 
-        shiftedNumber = CasinoLib._shiftDigits(7, 2, 1);
+        shiftedNumber = CasinoLib._shiftDigit(7, 2, 1);
         console2.log("shifted num (7,2,1)", shiftedNumber);
         assertEq(shiftedNumber, 50);
 
-        shiftedNumber = CasinoLib._shiftDigits(7, 2, 2);
+        shiftedNumber = CasinoLib._shiftDigit(7, 2, 2);
         console2.log("shifted num (7,2,2)", shiftedNumber);
         assertEq(shiftedNumber, 9);
 
         console2.log("959");
+    }
+
+    function testJackpotCondition() public {
+        assert(CasinoLib.isJackpot(777));
+        // CasinoLib uses a fixed-size layout:
+        assertEq(CasinoLib.NUM_COLS_ROWS, 3);
+        // so this would not technically be valid:
+        assert(!CasinoLib.isJackpot(77777));
+    }
+
+    function testOneMask() public {
+        assertEq(CasinoLib._oneMask(2), 11);
+        assertEq(CasinoLib._oneMask(4), 1111);
+        assertEq(CasinoLib._oneMask(8), 11111111);
+        assertEq(CasinoLib._oneMask(16), 1111111111111111);
+        assertEq(CasinoLib._oneMask(32), 11111111111111111111111111111111);
+        assertEq(CasinoLib._oneMask(64), 1111111111111111111111111111111111111111111111111111111111111111);
+    }
+
+    function testIsNumberRepeating() public pure {
+        assert(CasinoLib._isNumberRepeating(777));
+        assert(CasinoLib._isNumberRepeating(111));
+        assert(CasinoLib._isNumberRepeating(0)); // "0" is a repeating number here because it represents "000"
+        assert(!CasinoLib._isNumberRepeating(122));
+        assert(!CasinoLib._isNumberRepeating(112));
+        assert(!CasinoLib._isNumberRepeating(10));
+    }
+
+    function testPayouts() public {
+        uint256 multiplier = CasinoLib._applyDiagonalMultiplier(10);
+        // should be 2.5x10 == 25
+        assertEq(multiplier, 25);
     }
 }

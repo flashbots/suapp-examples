@@ -37,8 +37,7 @@ async function testSlotMachine<T extends Transport>(params: {
     console.log("chips balance", roundEth(await slotsClient.chipsBalance()))
 
     // play slot machine
-    const numTries = 1000
-    for (let i = 0; i < numTries; i++) {
+    for (let i = 0; i < 1000; i++) {
         const chipsBalance = await slotsClient.chipsBalance()
         console.log("chips balance", roundEth(chipsBalance))
         if (chipsBalance < MIN_BET) {
