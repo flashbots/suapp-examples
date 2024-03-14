@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import "./CasinoLib.sol";
+import "./CasinoLibV2.sol";
 import "suave-std/suavelib/Suave.sol";
 import {Random} from "suave-std/Random.sol";
 
@@ -15,7 +15,7 @@ contract SlotMachines {
     event BoughtChips(address gamer, uint256 amount);
     event EcononicCrisis(uint256 slotId, uint256 pot, uint256 requestedPayout);
     event InitializedSlotMachine(uint256 slotId, uint256 pot, uint256 minBet);
-    event PulledSlot(uint256 slotId, uint256 betAmount, uint256 latestPot);
+    event PulledSlot(uint256 slotId, uint256 betAmount, uint256 latestPot, string board);
     event Winner(uint256 slotId, address winner, uint256 amount);
     event Jackpot(uint256 slotId, address winner, uint256 amount);
     event Bust(uint256 slotId, address gamer);
@@ -43,19 +43,8 @@ contract SlotMachines {
         require(success, "ETH transfer failed");
     }
 
-    function initSlotMachine(uint256 minBet, uint8 winChancePercent) public payable returns (uint256 slotId) {
-        require(winChancePercent <= 50, "unreasonable odds");
-        CasinoLib.SlotMachine memory machine = CasinoLib.SlotMachine({
-            winChancePercent: winChancePercent,
-            nonce: 0,
-            minBet: minBet,
-            // should be economically safe hardcoded values for now
-            // but these should be configurable within reasonable params
-            jackpotFactor: 10000,
-            standardPayoutPercent: 200,
-            jackpotPayoutPercent: 9001,
-            pot: msg.value
-        });
+    function initSlotMachine(uint256 minBet) public payable returns (uint256 slotId) {
+        CasinoLib.SlotMachine memory machine = CasinoLib.SlotMachine({nonce: 0, minBet: minBet, pot: msg.value});
         slotMachines[numMachines] = machine;
         slotId = numMachines++;
         emit InitializedSlotMachine(slotId, msg.value, minBet);
@@ -66,42 +55,49 @@ contract SlotMachines {
         require(chipsBalance[msg.sender] >= betAmount, "insufficient funds deposited");
         CasinoLib.SlotMachine memory machine = slotMachines[slotId];
         require(betAmount >= machine.minBet, "must place at least minimum bet");
-        uint256 randomNum = Random.randomUint256();
-        suave_call_data = encodeOnSlotPulled(betAmount, slotId, randomNum);
+        uint8[] memory randomNums = CasinoLib.generateSlotNumbers();
+        suave_call_data = encodeOnSlotPulled(betAmount, slotId, randomNums);
     }
 
-    function encodeOnSlotPulled(uint256 betAmount, uint256 slotId, uint256 randomNum)
+    function encodeOnSlotPulled(uint256 betAmount, uint256 slotId, uint8[] memory randomNums)
         private
         pure
         returns (bytes memory)
     {
-        return bytes.concat(this.onSlotPulled.selector, abi.encode(betAmount, slotId, randomNum));
+        return bytes.concat(this.onSlotPulled.selector, abi.encode(betAmount, slotId, randomNums));
     }
 
-    function onSlotPulled(uint256 betAmount, uint256 slotId, uint256 randomNum) external {
+    function onSlotPulled(uint256 betAmount, uint256 slotId, uint8[] memory randomNums) external {
         chipsBalance[msg.sender] -= betAmount;
         CasinoLib.SlotMachine memory machine = slotMachines[slotId];
         machine.pot += betAmount;
         machine.nonce++;
-        slotMachines[slotId] = machine;
-        emit PulledSlot(slotId, betAmount, machine.pot);
-        uint256 payout = CasinoLib.calculateSlotPull(betAmount, randomNum, machine);
+        uint8[3] memory roll = [randomNums[0], randomNums[1], randomNums[2]];
+        (uint256 payout, uint256 rollValue) = CasinoLib.calculateSlotPull(betAmount, roll);
+
         if (payout == 0) {
             // return early; player lost
             emit Bust(slotId, msg.sender);
-            return;
-        }
-        if (machine.pot < payout) {
+        } else if (payout > machine.pot) {
             // slots couldn't pay out the winnings; refund bet
             emit EcononicCrisis(slotId, machine.pot, payout);
             chipsBalance[msg.sender] += betAmount;
-            return;
+            machine.pot -= betAmount;
+        } else {
+            machine.pot -= payout;
+            if (CasinoLib.isJackpot(rollValue)) {
+                emit Jackpot(slotId, msg.sender, payout);
+            } else {
+                emit Winner(slotId, msg.sender, payout);
+            }
         }
-        if (payout >= ((machine.jackpotPayoutPercent * machine.standardPayoutPercent * betAmount) / 10000)) {
-            emit Jackpot(slotId, msg.sender, payout);
-        }
+
+        machine.pot -= payout;
+        slotMachines[slotId] = machine;
+        string memory board = CasinoLib.boardToString(roll);
+        emit PulledSlot(slotId, betAmount, machine.pot, board);
+
         // disburse winnings
         chipsBalance[msg.sender] += payout;
-        emit Winner(slotId, msg.sender, payout);
     }
 }

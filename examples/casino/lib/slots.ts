@@ -112,19 +112,18 @@ export class SlotsClient<T extends Transport> {
     }
 
     /** Initialize a new slot machine, waits for tx receipt. */
-    async initSlotMachine(startingPot: bigint, minBet: bigint, winChancePercent: number): Promise<SlotMachineLog> {
+    async initSlotMachine(startingPot: bigint, minBet: bigint): Promise<SlotMachineLog> {
         if (!this.slotMachinesAddress) throw new Error('slot machine must be deployed first')
-        const balance = await this.provider.getBalance({address: this.wallet.account.address})
         const txRequest: TransactionRequestSuave = {
             to: this.slotMachinesAddress,
             data: encodeFunctionData({
                 abi: SlotsContract.abi,
                 functionName: 'initSlotMachine',
-                args: [minBet, winChancePercent],
+                args: [minBet],
             }),
             type: '0x0',
             gas: 175000n,
-            gasPrice: 1000000000n,
+            gasPrice: 1000000n,
             value: startingPot,
         }
         const txHash = await this.wallet.sendTransaction(txRequest)
@@ -150,8 +149,8 @@ export class SlotsClient<T extends Transport> {
             }),
             kettleAddress: this.kettleAddress,
             type: '0x43',
-            gas: 499000n,
-            gasPrice: 2000000000n,
+            gas: 220000n,
+            gasPrice: 1000000n,
         }
         return await this.wallet.sendTransaction(txRequest)
     }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
-import {CasinoLib2} from "./CasinoLibV2.sol";
+import {CasinoLib} from "./CasinoLibV2.sol";
 
 contract CasinoLibV2Test is Test {
     function test_extractNumberDiagonalDown() public returns (uint256 number) {
@@ -12,7 +12,7 @@ contract CasinoLibV2Test is Test {
             8 7 6
             9 6 7
         */
-        number = CasinoLib2.extractNumberDiagonalDown(785);
+        number = CasinoLib._extractNumberDiagonalDown(785);
         assertEq(number, 777);
 
         /*
@@ -20,7 +20,7 @@ contract CasinoLibV2Test is Test {
             2 1 4
             3 0 5
         */
-        number = CasinoLib2.extractNumberDiagonalDown(123);
+        number = CasinoLib._extractNumberDiagonalDown(123);
         assertEq(number, 115);
 
         /*
@@ -28,7 +28,7 @@ contract CasinoLibV2Test is Test {
             0 9 9
             1 8 0
         */
-        number = CasinoLib2.extractNumberDiagonalDown(908);
+        number = CasinoLib._extractNumberDiagonalDown(908);
         assertEq(number, 990);
 
         /*
@@ -36,7 +36,7 @@ contract CasinoLibV2Test is Test {
             0 9 8
             1 8 9
         */
-        number = CasinoLib2.extractNumberDiagonalDown(907);
+        number = CasinoLib._extractNumberDiagonalDown(907);
         assertEq(number, 999);
     }
 
@@ -46,7 +46,7 @@ contract CasinoLibV2Test is Test {
             8 7 6
             9 6 7
         */
-        number = CasinoLib2.extractNumberDiagonalUp(785);
+        number = CasinoLib._extractNumberDiagonalUp(785);
         assertEq(number, 975);
 
         /*
@@ -54,7 +54,7 @@ contract CasinoLibV2Test is Test {
             2 1 4
             3 0 5
         */
-        number = CasinoLib2.extractNumberDiagonalUp(123);
+        number = CasinoLib._extractNumberDiagonalUp(123);
         assertEq(number, 313);
 
         /*
@@ -62,7 +62,7 @@ contract CasinoLibV2Test is Test {
             0 9 9
             1 8 0
         */
-        number = CasinoLib2.extractNumberDiagonalUp(908);
+        number = CasinoLib._extractNumberDiagonalUp(908);
         assertEq(number, 198);
 
         /*
@@ -70,7 +70,7 @@ contract CasinoLibV2Test is Test {
             0 7 8
             1 6 9
         */
-        number = CasinoLib2.extractNumberDiagonalUp(987);
+        number = CasinoLib._extractNumberDiagonalUp(987);
         assertEq(number, 177);
     }
 
@@ -79,63 +79,63 @@ contract CasinoLibV2Test is Test {
         slotNumbers[0] = 4;
         slotNumbers[1] = 2;
         slotNumbers[2] = 0;
-        uint256 baseNumber = CasinoLib2._extractRowNumber(slotNumbers, 0);
+        uint256 baseNumber = CasinoLib._extractRowNumber(slotNumbers, 0);
         assertEq(baseNumber, 420);
 
         // test 1st row
         slotNumbers[0] = 1;
         slotNumbers[1] = 1;
         slotNumbers[2] = 9;
-        baseNumber = CasinoLib2._extractRowNumber(slotNumbers, 0);
+        baseNumber = CasinoLib._extractRowNumber(slotNumbers, 0);
         assertEq(baseNumber, 119);
 
         // test 2nd row
-        baseNumber = CasinoLib2._extractRowNumber(slotNumbers, 1);
+        baseNumber = CasinoLib._extractRowNumber(slotNumbers, 1);
         assertEq(baseNumber, 200);
 
         // test 3rd row
-        baseNumber = CasinoLib2._extractRowNumber(slotNumbers, 2);
+        baseNumber = CasinoLib._extractRowNumber(slotNumbers, 2);
         assertEq(baseNumber, 391);
     }
 
     function test_shiftDigits() public {
-        uint256 shiftedNumber = CasinoLib2._shiftDigits(7, 0, 0);
+        uint256 shiftedNumber = CasinoLib._shiftDigits(7, 0, 0);
         console2.log("shifted num (7,0,0)", shiftedNumber);
         assertEq(shiftedNumber, 700);
 
-        shiftedNumber = CasinoLib2._shiftDigits(7, 0, 1);
+        shiftedNumber = CasinoLib._shiftDigits(7, 0, 1);
         console2.log("shifted num (7,0,1)", shiftedNumber);
         assertEq(shiftedNumber, 70);
 
-        shiftedNumber = CasinoLib2._shiftDigits(7, 0, 2);
+        shiftedNumber = CasinoLib._shiftDigits(7, 0, 2);
         console2.log("shifted num (7,0,2)", shiftedNumber);
         assertEq(shiftedNumber, 7);
 
         console2.log("777");
 
-        shiftedNumber = CasinoLib2._shiftDigits(7, 1, 0);
+        shiftedNumber = CasinoLib._shiftDigits(7, 1, 0);
         console2.log("shifted num (7,1,0)", shiftedNumber);
         assertEq(shiftedNumber, 800);
 
-        shiftedNumber = CasinoLib2._shiftDigits(7, 1, 1);
+        shiftedNumber = CasinoLib._shiftDigits(7, 1, 1);
         console2.log("shifted num (7,1,1)", shiftedNumber);
         assertEq(shiftedNumber, 60);
 
-        shiftedNumber = CasinoLib2._shiftDigits(7, 1, 2);
+        shiftedNumber = CasinoLib._shiftDigits(7, 1, 2);
         console2.log("shifted num (7,1,2)", shiftedNumber);
         assertEq(shiftedNumber, 8);
 
         console2.log("868");
 
-        shiftedNumber = CasinoLib2._shiftDigits(7, 2, 0);
+        shiftedNumber = CasinoLib._shiftDigits(7, 2, 0);
         console2.log("shifted num (7,2,0)", shiftedNumber);
         assertEq(shiftedNumber, 900);
 
-        shiftedNumber = CasinoLib2._shiftDigits(7, 2, 1);
+        shiftedNumber = CasinoLib._shiftDigits(7, 2, 1);
         console2.log("shifted num (7,2,1)", shiftedNumber);
         assertEq(shiftedNumber, 50);
 
-        shiftedNumber = CasinoLib2._shiftDigits(7, 2, 2);
+        shiftedNumber = CasinoLib._shiftDigits(7, 2, 2);
         console2.log("shifted num (7,2,2)", shiftedNumber);
         assertEq(shiftedNumber, 9);
 
