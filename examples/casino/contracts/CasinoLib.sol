@@ -11,7 +11,7 @@ library CasinoLib {
     uint8 public constant NUM_COLS_ROWS = 3;
     uint8 public constant NUM_VALUES = 10;
     uint256 private constant SCALAR = 10 ** 9;
-    uint256 public constant BASE_MULTIPLIER = 5;
+    uint256 public constant BASE_MULTIPLIER = 6;
     uint256 public constant JACKPOT_DIGIT = 7;
 
     struct SlotMachine {
@@ -131,7 +131,6 @@ library CasinoLib {
             uint256 rowValue = _extractRowNumber(randomNums, i);
             if (_isNumberRepeating(rowValue)) {
                 if (i == middleRowIndex) {
-                    // x3 payout if found on middle row
                     multiplier = _applyMiddleRowMultiplier(multiplier);
                 } else {
                     multiplier = _applyHorizontalMultiplier(multiplier);
