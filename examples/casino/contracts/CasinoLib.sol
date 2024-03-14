@@ -97,16 +97,18 @@ library CasinoLib {
      *                       9 6 7   . . \
      *       payout:         (10 * 10 * 2) * bet
      */
-    function calculateSlotPull(uint256 betAmount, uint8[NUM_COLS_ROWS] memory randomNums)
-        internal
-        pure
-        returns (uint256 payout, uint256 rollValue)
-    {
-        require(NUM_COLS_ROWS % 2 == 1, "NUM_COLS_ROWS must be odd because the middle row is special.");
+    function calculateSlotPull(
+        uint256 betAmount,
+        uint8[NUM_COLS_ROWS] memory randomNums
+    ) internal pure returns (uint256 payout, uint256 rollValue) {
+        require(
+            NUM_COLS_ROWS % 2 == 1,
+            "NUM_COLS_ROWS must be odd because the middle row is special."
+        );
 
         /* ...calculate payout conditions... */
 
-        // base win multiplier is x10. set optimistically, then check @ end; if it's still 10, set to 0.
+        // base win multiplier is set optimistically, then checked @ end; if it's still 10, set to 0.
         uint256 multiplier = BASE_MULTIPLIER;
         uint8 middleRowIndex = _getMiddleRowIndex();
         rollValue = _extractRowNumber(randomNums, 0);
@@ -122,7 +124,11 @@ library CasinoLib {
             multiplier = _applyDiagonalMultiplier(multiplier);
         }
         // check for jackpot; only one of the conditionals is possible at a time
-        if (isJackpot(rollValue) || isJackpot(diagonalDownValue) || isJackpot(diagonalUpValue)) {
+        if (
+            isJackpot(rollValue) ||
+            isJackpot(diagonalDownValue) ||
+            isJackpot(diagonalUpValue)
+        ) {
             multiplier = _applyJackpot(multiplier);
         }
 
@@ -176,11 +182,10 @@ library CasinoLib {
     }
 
     /// Convert
-    function _extractRowNumber(uint8[NUM_COLS_ROWS] memory randomNums, uint8 rowIndex)
-        internal
-        pure
-        returns (uint256 number)
-    {
+    function _extractRowNumber(
+        uint8[NUM_COLS_ROWS] memory randomNums,
+        uint8 rowIndex
+    ) internal pure returns (uint256 number) {
         // each column shifts +- 1 per rowIndex
         for (uint8 j = 0; j < NUM_COLS_ROWS; j++) {
             number += _shiftDigits(randomNums[j], rowIndex, j);
@@ -188,34 +193,50 @@ library CasinoLib {
     }
 
     /// Shift a single digit in a number by an amount specified by rowIndex, in a direction specified by (columnIndex % 2)
-    function _shiftDigits(uint256 baseNumber, uint8 rowIndex, uint8 columnIndex)
-        internal
-        pure
-        returns (uint256 number)
-    {
+    function _shiftDigits(
+        uint256 baseNumber,
+        uint8 rowIndex,
+        uint8 columnIndex
+    ) internal pure returns (uint256 number) {
         if (columnIndex % 2 == 0) {
-            number += ((baseNumber + rowIndex) % NUM_VALUES) * (NUM_VALUES ** (NUM_COLS_ROWS - columnIndex - 1));
+            number +=
+                ((baseNumber + rowIndex) % NUM_VALUES) *
+                (NUM_VALUES ** (NUM_COLS_ROWS - columnIndex - 1));
         } else {
             // odd columns decrement per row
             if (baseNumber < (NUM_COLS_ROWS - 1)) {
                 // protect from underflow
                 baseNumber += NUM_VALUES;
             }
-            number += ((baseNumber - rowIndex) % NUM_VALUES) * (NUM_VALUES ** (NUM_COLS_ROWS - columnIndex - 1));
+            number +=
+                ((baseNumber - rowIndex) % NUM_VALUES) *
+                (NUM_VALUES ** (NUM_COLS_ROWS - columnIndex - 1));
         }
     }
 
-    function _extractNumberDiagonalDown(uint256 baseNumber) internal pure returns (uint256 number) {
+    function _extractNumberDiagonalDown(
+        uint256 baseNumber
+    ) internal pure returns (uint256 number) {
         for (uint8 i = 0; i < NUM_COLS_ROWS; i++) {
             uint256 factor = NUM_VALUES ** (NUM_COLS_ROWS - i - 1);
-            number += _shiftDigits((baseNumber - (baseNumber % factor)) / factor, i, i);
+            number += _shiftDigits(
+                (baseNumber - (baseNumber % factor)) / factor,
+                i,
+                i
+            );
         }
     }
 
-    function _extractNumberDiagonalUp(uint256 baseNumber) internal pure returns (uint256 number) {
+    function _extractNumberDiagonalUp(
+        uint256 baseNumber
+    ) internal pure returns (uint256 number) {
         for (uint8 i = 0; i < NUM_COLS_ROWS; i++) {
             uint256 factor = NUM_VALUES ** (NUM_COLS_ROWS - i - 1);
-            number += _shiftDigits((baseNumber - (baseNumber % factor)) / factor, NUM_COLS_ROWS - i - 1, i);
+            number += _shiftDigits(
+                (baseNumber - (baseNumber % factor)) / factor,
+                NUM_COLS_ROWS - i - 1,
+                i
+            );
         }
     }
 
@@ -231,21 +252,35 @@ library CasinoLib {
         return multiplier * 10;
     }
 
-    function _applyHorizontalMultiplier(uint256 multiplier) internal pure returns (uint256) {
+    function _applyHorizontalMultiplier(
+        uint256 multiplier
+    ) internal pure returns (uint256) {
         return multiplier * 2;
     }
 
-    function _applyMiddleRowMultiplier(uint256 multiplier) internal pure returns (uint256) {
+    function _applyMiddleRowMultiplier(
+        uint256 multiplier
+    ) internal pure returns (uint256) {
         return multiplier * 3;
     }
 
-    function _applyDiagonalMultiplier(uint256 multiplier) internal pure returns (uint256) {
+    function _applyDiagonalMultiplier(
+        uint256 multiplier
+    ) internal pure returns (uint256) {
         return multiplier * 2;
     }
 
-    function boardToString(uint8[NUM_COLS_ROWS] memory randomNums) internal pure returns (string memory result) {
+    function boardToString(
+        uint8[NUM_COLS_ROWS] memory randomNums
+    ) internal pure returns (string memory result) {
         for (uint8 i = 0; i < NUM_COLS_ROWS; i++) {
-            result = string(abi.encodePacked(result, _extractRowNumber(randomNums, i).toString(), "\n"));
+            result = string(
+                abi.encodePacked(
+                    result,
+                    _extractRowNumber(randomNums, i).toString(),
+                    "\n"
+                )
+            );
         }
     }
 }
