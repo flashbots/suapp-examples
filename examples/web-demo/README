@@ -1,0 +1,26 @@
+# SUAVE Web Demo
+
+## How to use
+
+Start the `suave-geth` development environment
+
+```
+$ cd examples/web-demo
+```
+
+```
+$ forge build
+```
+
+There should be a `out` directory generated, if not, you can run:
+
+```
+$ forge build --force
+```
+
+
+Then:
+
+```
+$ yarn & yarn dev
+```
