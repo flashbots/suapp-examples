@@ -5,7 +5,7 @@ import {
     encodeFunctionData,
 } from '@flashbots/suave-viem'
 import { TransactionRequestSuave } from '@flashbots/suave-viem/chains/suave/types'
-import OFAContract from '../contracts/out/OFA.sol/OFAPrivate.json'
+import OFAContract from '../../../out/OFA.sol/OFAPrivate.json'
 
 /** Factory class to create MEV-Share bids on SUAVE. */
 export class OFAOrder {
