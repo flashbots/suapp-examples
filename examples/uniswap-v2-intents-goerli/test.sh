@@ -1,3 +1,4 @@
+#!/bin/bash
 ### run the test script in an infinite loop
 ### this is useful for testing the script on a testnet
 ### just don't forget to stop it when you're done

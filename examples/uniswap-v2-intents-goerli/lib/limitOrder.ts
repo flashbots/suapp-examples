@@ -6,13 +6,13 @@ import {
     encodeFunctionData,
     keccak256,
     parseAbi
-} from 'viem/src'
+} from '@flashbots/suave-viem'
 import {
     type SuaveProvider,
     SuaveTxRequestTypes,
     type SuaveWallet,
     type TransactionRequestSuave
-} from 'viem/src/chains/utils'
+} from '@flashbots/suave-viem/chains/utils'
 import IntentsContract from '../../../out/Intents.sol/Intents.json'
 
 export interface ILimitOrder {
@@ -25,16 +25,16 @@ export interface ILimitOrder {
     senderKey: Hex
 }
 
-export async function deployLimitOrderManager<T extends Transport>(wallet: SuaveWallet<T>, provider: SuaveProvider<T>): Promise<Address> {
-    // deploy LimitOrderManager
-    console.log("deploying LimitOrderManager")
+export async function deployIntentRouter<T extends Transport>(wallet: SuaveWallet<T>, provider: SuaveProvider<T>): Promise<Address> {
+    // deploy IntentRouter
+    console.log("deploying IntentRouter")
     const deployContractTxHash = await wallet.deployContract({
         abi: IntentsContract.abi,
         bytecode: IntentsContract.bytecode.object as Hex,
         
     })
     const deployContractReceipt = await provider.waitForTransactionReceipt({ hash: deployContractTxHash })
-    console.log("FINISHED deploying LimitOrderManager")
+    console.log("FINISHED deploying IntentRouter")
 
     // Return the contract address from the receipt
     if (!deployContractReceipt.contractAddress) throw new Error('no contract address')
