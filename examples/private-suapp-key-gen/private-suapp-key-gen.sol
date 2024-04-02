@@ -5,7 +5,6 @@ import "suave-std/suavelib/Suave.sol";
 import "suave-std/Context.sol";
 import "suave-std/Suapp.sol";
 import "suave-std/Transactions.sol";
-import "forge-std/console.sol";
 
 contract PublicSuapp is Suapp {
     Suave.DataId signingKeyBid;
@@ -25,9 +24,6 @@ contract PublicSuapp is Suapp {
         Suave.DataRecord memory bid = Suave.newDataRecord(10, peekers, peekers, "private_key");
         Suave.confidentialStore(bid.id, KEY_PRIVATE_KEY, abi.encodePacked(keyData));
 
-        console.log("-- key initialized --");
-        console.log(keyData);
-
         return abi.encodeWithSelector(this.updateKeyCallback.selector, bid.id);
     }
 
@@ -38,9 +34,6 @@ contract PublicSuapp is Suapp {
 
     function example() public returns (bytes memory) {
         bytes memory signingKey = Suave.confidentialRetrieve(signingKeyBid, KEY_PRIVATE_KEY);
-
-        console.log("-- example --");
-        console.log(string(signingKey));
 
         Transactions.EIP155Request memory txnWithToAddress = Transactions.EIP155Request({
             to: address(0x00000000000000000000000000000000DeaDBeef),
