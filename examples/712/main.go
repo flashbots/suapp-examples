@@ -18,49 +18,46 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/flashbots/suapp-examples/framework"
+	envconfig "github.com/sethvargo/go-envconfig"
 )
 
+// Contract-specific constants
 const (
-	// Deployment specific
-	PRIV_KEY    = "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6" // FILL IN TO RUN EXAMPLE
-	ETH_RPC_URL = "http://localhost:8545"                                              // FILL IN TO RUN EXAMPLE
-
-	// Contract Specific
-	MINT_TYPEHASH    = "0x686aa0ee2a8dd75ace6f66b3a5e79d3dfd8e25e05a5e494bb85e72214ab37880"
-	DOMAIN_SEPARATOR = "0x617661b7ab13ce21150e0a39abe5834762b356e3c643f10c28a3c9331025604a"
-	ETH_CHAIN_ID     = 5
-	NFTEE_TOKEN_ID   = 1
+	MintTypehash = "0x686aa0ee2a8dd75ace6f66b3a5e79d3dfd8e25e05a5e494bb85e72214ab37880"
+	EthChainID   = 5
+	NFTEETokenID = 1
 )
 
 func main() {
+	var cfg framework.Config
+	if err := envconfig.Process(context.Background(), &cfg); err != nil {
+		log.Fatal(err)
+	}
+	frL1 := framework.New(framework.WithL1())
+	ethClient := frL1.L1.RPC()
+
 	// create private key to be used on SUAVE and Eth L1
-	privKey := framework.NewPrivKeyFromHex("2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6")
+	privKey := cfg.FundedAccountL1
 	fmt.Printf("SUAVE Signer Address: %s\n", privKey.Address())
 
 	// Deploy SUAVE L1 Contract
 	suaveContractAddress, suaveTxHash, suaveSig := deploySuaveEmitter(privKey)
-
 	fmt.Printf("SUAVE Contract deployed at: %s\n", suaveContractAddress.Hex())
 	fmt.Printf("SUAVE Transaction Hash: %s\n", suaveTxHash.Hex())
 
-	ethClient, err := ethclient.Dial(ETH_RPC_URL)
+	// create tx signer
+	auth, err := bind.NewKeyedTransactorWithChainID(privKey.Priv, big.NewInt(EthChainID)) // Chain ID for Goerli
 	if err != nil {
-		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
+		log.Fatalf("Failed to create authorized transactor: %v", err)
 	}
 
 	// Deploy Ethereum L1 Contract
-	auth, err := bind.NewKeyedTransactorWithChainID(privKey.Priv, big.NewInt(ETH_CHAIN_ID)) // Chain ID for Goerli
 	ethContractAddress, ethTxHash, artifact := deployEthNFTEE(ethClient, privKey.Address(), auth)
-
 	fmt.Printf("Ethereum Contract deployed at: %s\n", ethContractAddress.Hex())
 	fmt.Printf("Ethereum Transaction Hash: %s\n", ethTxHash.Hex())
 
 	// Mint NFT with the signature from SUAVE
-
-	if err != nil {
-		log.Fatalf("Failed to create authorized transactor: %v", err)
-	}
-	tokenID := big.NewInt(NFTEE_TOKEN_ID)
+	tokenID := big.NewInt(NFTEETokenID)
 	isMinted, err := mintNFTWithSignature(ethContractAddress, tokenID, privKey.Address(), suaveSig, ethClient, auth, artifact.Abi)
 	if err != nil {
 		log.Printf("Error minting NFT: %v", err)
@@ -88,7 +85,7 @@ func deploySuaveEmitter(privKey *framework.PrivKey) (common.Address, common.Hash
 
 	_ = emitterContract.SendConfidentialRequest("updatePrivateKey", []interface{}{}, []byte(skHex))
 
-	tokenID := big.NewInt(NFTEE_TOKEN_ID)
+	tokenID := big.NewInt(NFTEETokenID)
 
 	// Call createEIP712Digest to generate digestHash
 	digestHash := contract.Call("createEIP712Digest", []interface{}{tokenID, addr})
@@ -200,10 +197,12 @@ func mintNFTWithSignature(contractAddress common.Address, tokenID *big.Int, reci
 // NFTEEApprovalEventABI is the ABI of the NFTEEApproval event.
 var NFTEEApprovalEventABI = `[{"anonymous":false,"inputs":[{"indexed":false,"internalType":"bytes","name":"signedMessage","type":"bytes"}],"name":"NFTEEApproval","type":"event"}]`
 
+// NFTEEApproval is a wrapper for a signed NFTEEApproval message.
 type NFTEEApproval struct {
 	SignedMessage []byte
 }
 
+// Unpack unpacks the log data into the NFTEEApproval struct.
 func (na *NFTEEApproval) Unpack(log *types.Log) error {
 	eventABI, err := abi.JSON(strings.NewReader(NFTEEApprovalEventABI))
 	if err != nil {
