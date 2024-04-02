@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -23,8 +22,8 @@ import (
 
 const (
 	// Deployment specific
-	PRIV_KEY    = "VALID_PRIVATE_KEY"    // FILL IN TO RUN EXAMPLE
-	ETH_RPC_URL = "VALID_ETH_L1_RPC_URL" // FILL IN TO RUN EXAMPLE
+	PRIV_KEY    = "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6" // FILL IN TO RUN EXAMPLE
+	ETH_RPC_URL = "http://localhost:8545"                                              // FILL IN TO RUN EXAMPLE
 
 	// Contract Specific
 	MINT_TYPEHASH    = "0x686aa0ee2a8dd75ace6f66b3a5e79d3dfd8e25e05a5e494bb85e72214ab37880"
@@ -35,53 +34,67 @@ const (
 
 func main() {
 	// create private key to be used on SUAVE and Eth L1
-	privKey := framework.NewPrivKeyFromHex("VALID_PRIVATE_KEY")
+	privKey := framework.NewPrivKeyFromHex("2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6")
 	fmt.Printf("SUAVE Signer Address: %s\n", privKey.Address())
 
 	// Deploy SUAVE L1 Contract
-	suaveContractAddress, suaveTxHash, suaveSig := deploySuaveContract(privKey)
+	suaveContractAddress, suaveTxHash, suaveSig := deploySuaveEmitter(privKey)
 
 	fmt.Printf("SUAVE Contract deployed at: %s\n", suaveContractAddress.Hex())
 	fmt.Printf("SUAVE Transaction Hash: %s\n", suaveTxHash.Hex())
 
-	// Deploy Ethereum L1 Contract and Mint NFT
-	ethContractAddress, ethTxHash, ok := deployEthContractAndMint(privKey.Address(), suaveSig, privKey.Priv)
+	ethClient, err := ethclient.Dial(ETH_RPC_URL)
+	if err != nil {
+		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
+	}
+
+	// Deploy Ethereum L1 Contract
+	auth, err := bind.NewKeyedTransactorWithChainID(privKey.Priv, big.NewInt(ETH_CHAIN_ID)) // Chain ID for Goerli
+	ethContractAddress, ethTxHash, artifact := deployEthNFTEE(ethClient, privKey.Address(), auth)
 
 	fmt.Printf("Ethereum Contract deployed at: %s\n", ethContractAddress.Hex())
 	fmt.Printf("Ethereum Transaction Hash: %s\n", ethTxHash.Hex())
 
-	// Check if NFT was minted
-	if !ok {
-		panic("NFTEE minting on L1 failed")
-	}
+	// Mint NFT with the signature from SUAVE
 
+	if err != nil {
+		log.Fatalf("Failed to create authorized transactor: %v", err)
+	}
+	tokenID := big.NewInt(NFTEE_TOKEN_ID)
+	isMinted, err := mintNFTWithSignature(ethContractAddress, tokenID, privKey.Address(), suaveSig, ethClient, auth, artifact.Abi)
+	if err != nil {
+		log.Printf("Error minting NFT: %v", err)
+	}
+	if !isMinted {
+		log.Printf("NFT minting failed")
+	}
 }
 
-func deploySuaveContract(privKey *framework.PrivKey) (common.Address, common.Hash, []byte) {
+func deploySuaveEmitter(privKey *framework.PrivKey) (common.Address, common.Hash, []byte) {
 	relayerURL := "localhost:1234"
 	go func() {
 		log.Fatal(http.ListenAndServe(relayerURL, &relayHandlerExample{}))
 	}()
 
 	fr := framework.New()
-	contract := fr.L1.DeployContract("712Emitter.sol/Emitter.json")
+	contract := fr.Suave.DeployContract("712Emitter.sol/Emitter.json")
 
 	addr := privKey.Address()
 	fundBalance := big.NewInt(100000000000000000)
-	fr.L1.FundAccount(addr, fundBalance)
+	fr.Suave.FundAccount(addr, fundBalance)
 
 	emitterContract := contract.Ref(privKey)
 	skHex := hex.EncodeToString(crypto.FromECDSA(privKey.Priv))
 
 	_ = emitterContract.SendConfidentialRequest("updatePrivateKey", []interface{}{}, []byte(skHex))
 
-	tokenId := big.NewInt(NFTEE_TOKEN_ID)
+	tokenID := big.NewInt(NFTEE_TOKEN_ID)
 
 	// Call createEIP712Digest to generate digestHash
-	digestHash := contract.Call("createEIP712Digest", []interface{}{tokenId, addr})
+	digestHash := contract.Call("createEIP712Digest", []interface{}{tokenID, addr})
 
 	// Call signL1MintApproval and compare signatures
-	receipt := emitterContract.SendConfidentialRequest("signL1MintApproval", []interface{}{tokenId, addr}, nil)
+	receipt := emitterContract.SendConfidentialRequest("signL1MintApproval", []interface{}{tokenID, addr}, nil)
 	nfteeApprovalEvent := &NFTEEApproval{}
 	if err := nfteeApprovalEvent.Unpack(receipt.Logs[0]); err != nil {
 		panic(err)
@@ -112,24 +125,14 @@ func deploySuaveContract(privKey *framework.PrivKey) (common.Address, common.Has
 	return emitterContract.Raw().Address(), receipt.TxHash, signature
 }
 
-func deployEthContractAndMint(suaveSignerAddr common.Address, suaveSignature []byte, privKey *ecdsa.PrivateKey) (common.Address, common.Hash, bool) {
-	ethClient, err := ethclient.Dial(ETH_RPC_URL)
-	if err != nil {
-		log.Fatalf("Failed to connect to the Ethereum client: %v", err)
-	}
-
-	auth, err := bind.NewKeyedTransactorWithChainID(privKey, big.NewInt(ETH_CHAIN_ID)) // Chain ID for Goerli
-	if err != nil {
-		log.Fatalf("Failed to create authorized transactor: %v", err)
-	}
-
+func deployEthNFTEE(ethClient *ethclient.Client, signerAddr common.Address, auth *bind.TransactOpts) (common.Address, common.Hash, *framework.Artifact) {
 	artifact, err := framework.ReadArtifact("NFTEE.sol/SuaveNFT.json")
 	if err != nil {
 		panic(err)
 	}
 
-	// Deploy contract with SUAVE signer address as a constructor argument
-	_, tx, _, err := bind.DeployContract(auth, *artifact.Abi, artifact.Code, ethClient, suaveSignerAddr)
+	// Deploy contract with signer address as a constructor argument
+	_, tx, _, err := bind.DeployContract(auth, *artifact.Abi, artifact.Code, ethClient, signerAddr)
 	if err != nil {
 		log.Fatalf("Failed to deploy new contract: %v", err)
 	}
@@ -143,23 +146,15 @@ func deployEthContractAndMint(suaveSignerAddr common.Address, suaveSignature []b
 
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		log.Printf("Contract deployment transaction failed: receipt status %v", receipt.Status)
-		return common.Address{}, common.Hash{}, false
+		return common.Address{}, common.Hash{}, artifact
 	}
 
 	fmt.Println("Contract deployed, address:", receipt.ContractAddress.Hex())
 
-	// Mint NFT with the signature from SUAVE
-	tokenId := big.NewInt(NFTEE_TOKEN_ID)
-	isMinted, err := mintNFTWithSignature(receipt.ContractAddress, tokenId, suaveSignerAddr, suaveSignature, ethClient, auth, artifact.Abi)
-	if err != nil {
-		log.Printf("Error minting NFT: %v", err)
-		return receipt.ContractAddress, tx.Hash(), false
-	}
-
-	return receipt.ContractAddress, tx.Hash(), isMinted
+	return receipt.ContractAddress, tx.Hash(), artifact
 }
 
-func mintNFTWithSignature(contractAddress common.Address, tokenId *big.Int, recipient common.Address, signature []byte, client *ethclient.Client, auth *bind.TransactOpts, sabi *abi.ABI) (bool, error) {
+func mintNFTWithSignature(contractAddress common.Address, tokenID *big.Int, recipient common.Address, signature []byte, client *ethclient.Client, auth *bind.TransactOpts, sabi *abi.ABI) (bool, error) {
 
 	contract := bind.NewBoundContract(contractAddress, *sabi, client, client, client)
 
@@ -181,7 +176,7 @@ func mintNFTWithSignature(contractAddress common.Address, tokenId *big.Int, reci
 		v += 27
 	}
 
-	tx, err := contract.Transact(auth, "mintNFTWithSignature", tokenId, recipient, v, r, s)
+	tx, err := contract.Transact(auth, "mintNFTWithSignature", tokenID, recipient, v, r, s)
 	if err != nil {
 		return false, fmt.Errorf("mintNFTWithSignature transaction failed: %v", err)
 	}
