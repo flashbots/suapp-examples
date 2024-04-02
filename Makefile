@@ -47,8 +47,13 @@ devnet-down:
 run-integration:
 	go run examples/build-eth-block/main.go
 	go run examples/mevm-confidential-store/main.go
+	go run examples/mevm-context/main.go
 	go run examples/mevm-is-confidential/main.go
 	go run examples/onchain-callback/main.go
 	go run examples/onchain-state/main.go
 	go run examples/offchain-logs/main.go
 	go run examples/mevm-context/main.go
+	go run examples/private-library/main.go
+	go run examples/private-library-confidential-store/main.go
+	go run examples/private-suapp-key/main.go
+	go run examples/std-transaction-signing/main.go
