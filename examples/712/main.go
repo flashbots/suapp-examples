@@ -64,16 +64,16 @@ func deploySuaveContract(privKey *framework.PrivKey) (common.Address, common.Has
 	}()
 
 	fr := framework.New()
-	contract := fr.DeployContract("712Emitter.sol/Emitter.json")
+	contract := fr.L1.DeployContract("712Emitter.sol/Emitter.json")
 
 	addr := privKey.Address()
 	fundBalance := big.NewInt(100000000000000000)
-	fr.FundAccount(addr, fundBalance)
+	fr.L1.FundAccount(addr, fundBalance)
 
-	contractAddr := contract.Ref(privKey)
+	emitterContract := contract.Ref(privKey)
 	skHex := hex.EncodeToString(crypto.FromECDSA(privKey.Priv))
 
-	_ = contractAddr.SendTransaction("updatePrivateKey", []interface{}{}, []byte(skHex))
+	_ = emitterContract.SendConfidentialRequest("updatePrivateKey", []interface{}{}, []byte(skHex))
 
 	tokenId := big.NewInt(NFTEE_TOKEN_ID)
 
@@ -81,7 +81,7 @@ func deploySuaveContract(privKey *framework.PrivKey) (common.Address, common.Has
 	digestHash := contract.Call("createEIP712Digest", []interface{}{tokenId, addr})
 
 	// Call signL1MintApproval and compare signatures
-	receipt := contractAddr.SendTransaction("signL1MintApproval", []interface{}{tokenId, addr}, nil)
+	receipt := emitterContract.SendConfidentialRequest("signL1MintApproval", []interface{}{tokenId, addr}, nil)
 	nfteeApprovalEvent := &NFTEEApproval{}
 	if err := nfteeApprovalEvent.Unpack(receipt.Logs[0]); err != nil {
 		panic(err)
@@ -109,7 +109,7 @@ func deploySuaveContract(privKey *framework.PrivKey) (common.Address, common.Has
 		signature = nfteeApprovalEvent.SignedMessage
 	}
 
-	return contractAddr.Address(), receipt.TxHash, signature
+	return emitterContract.Raw().Address(), receipt.TxHash, signature
 }
 
 func deployEthContractAndMint(suaveSignerAddr common.Address, suaveSignature []byte, privKey *ecdsa.PrivateKey) (common.Address, common.Hash, bool) {

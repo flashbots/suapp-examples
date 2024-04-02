@@ -117,7 +117,7 @@ type Contract struct {
 }
 
 func (c *Contract) Call(methodName string, args []interface{}) []interface{} {
-	input, err := c.abi.Pack(methodName, args...)
+	input, err := c.Abi.Pack(methodName, args...)
 	if err != nil {
 		panic(err)
 	}
