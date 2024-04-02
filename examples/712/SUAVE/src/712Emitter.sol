@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "../../../../lib/suave-std/src/suavelib/Suave.sol";
+import "suave-std/suavelib/Suave.sol";
 
 contract Emitter {
     // Constants matching those in SuaveNFT
@@ -66,8 +66,8 @@ contract Emitter {
 
     event NFTEEApproval(bytes signedMessage);
 
-    function emitSignedMintApproval(bytes memory msg) public {
-        emit NFTEEApproval(msg);
+    function emitSignedMintApproval(bytes memory message) public {
+        emit NFTEEApproval(message);
     }
 
     // Function to create EIP-712 digest
@@ -82,7 +82,7 @@ contract Emitter {
     }
 
     // Function to sign and emit a signed EIP 712 digest for minting an NFTEE on L1
-    function signL1MintApproval(uint256 tokenId, address recipient) public view returns (bytes memory) {
+    function signL1MintApproval(uint256 tokenId, address recipient) public returns (bytes memory) {
         require(Suave.isConfidential());
         require(Suave.DataId.unwrap(privateKeyDataID) != bytes16(0), "private key is not set");
 
@@ -90,7 +90,7 @@ contract Emitter {
 
         bytes memory signerPrivateKey = Suave.confidentialRetrieve(privateKeyDataID, cstoreKey);
 
-        bytes memory msgBytes = Suave.signMessage(digest, string(signerPrivateKey));
+        bytes memory msgBytes = Suave.signMessage(digest, Suave.CryptoSignature.SECP256, string(signerPrivateKey));
 
         return bytes.concat(this.emitSignedMintApproval.selector, abi.encode(msgBytes));
     }
