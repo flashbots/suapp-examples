@@ -56,4 +56,5 @@ run-integration:
 	go run examples/private-library/main.go
 	go run examples/private-library-confidential-store/main.go
 	go run examples/private-suapp-key/main.go
+	go run examples/private-suapp-key-gen/main.go
 	go run examples/std-transaction-signing/main.go
