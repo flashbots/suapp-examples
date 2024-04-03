@@ -67,7 +67,7 @@ jobs:
 
       - name: Run suave
         run: |
-          docker-compose up -d
+          make devnet-up
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
