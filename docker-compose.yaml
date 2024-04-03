@@ -7,7 +7,7 @@ services:
       - --suave.dev
       - --http.addr=0.0.0.0
       - --suave.eth.remote_endpoint=http://suave-enabled-chain:8545
-      - --suave.eth.external-whitelist=172.17.0.1
+      - --suave.eth.external-whitelist=*
     depends_on:
       - suave-enabled-chain
     ports:
