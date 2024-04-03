@@ -54,7 +54,7 @@ devnet-kurtosis-down:
 .PHONY: run-integration
 run-integration:
 	go run examples/build-eth-block/main.go
-	go run examples/app-ofa-example/main.go
+	go run examples/app-ofa-private/main.go
 	go run examples/mevm-confidential-store/main.go
 	go run examples/mevm-context/main.go
 	go run examples/mevm-is-confidential/main.go
