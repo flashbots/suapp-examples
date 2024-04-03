@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   suave-mevm:
-    image: flashbots/suave-geth:v0.1.4
+    image: flashbots/suave-geth:latest
     command:
       - --suave.dev
       - --http.addr=0.0.0.0
@@ -15,7 +15,7 @@ services:
     networks:
       - suave-net
   suave-enabled-chain:
-    image: flashbots/suave-execution-geth:v0.0.1-alpha.1-dev-03
+    image: flashbots/suave-execution-geth:latest
     command:
       - --dev
       - --dev.gaslimit=30000000
