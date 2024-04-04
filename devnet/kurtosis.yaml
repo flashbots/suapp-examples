@@ -1,0 +1,27 @@
+network_params:
+  seconds_per_slot: 3
+  capella_fork_epoch: 0
+  deneb_fork_epoch: 2
+
+participants:
+  - el_client_type: geth
+    el_client_image: flashbots/suave-execution-geth:v0.0.1-alpha.1-dev-03
+    cl_client_type: lighthouse
+    cl_client_image: ""
+    count: 1
+  - el_client_type: reth
+    el_client_image: ""
+    cl_client_type: lighthouse
+    cl_client_image: ""
+    count: 2
+
+mev_type: full
+
+mev_params:
+  mev_boost_image: flashbots/mev-boost:1.7a1
+  mev_builder_image: flashbots/builder:1.13.11.4844.dev2
+  mev_flood_image: flashbots/mev-flood:0.0.9.dev2
+  mev_relay_image: flashbots/mev-boost-relay:0.29
+
+additional_services:
+  - blockscout

@@ -27,9 +27,9 @@ func main() {
 	}
 
 	if cfg.BuilderURL == "local" {
-		// '172.17.0.1' is the default docker host IP that a docker container can
+		// 'host.docker.internal' is the default docker host IP that a docker container can
 		// use to connect with a service running on the host machine.
-		cfg.BuilderURL = "http://172.17.0.1:1234"
+		cfg.BuilderURL = "http://" + framework.GatewayAddr() + ":1234"
 
 		go func() {
 			log.Fatal(http.ListenAndServe("0.0.0.0:1234", &relayHandlerExample{}))
@@ -56,17 +56,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	targeAddr := testAddr1.Address()
+	targetAddr := testAddr1.Address()
 
 	ethTxn1, _ := fr.L1.SignTx(testAddr1, &types.LegacyTx{
-		To:       &targeAddr,
+		To:       &targetAddr,
 		Value:    big.NewInt(1000),
 		Gas:      21000,
 		GasPrice: big.NewInt(670189871),
 	})
 
 	ethTxnBackrun, _ := fr.L1.SignTx(testAddr2, &types.LegacyTx{
-		To:       &targeAddr,
+		To:       &targetAddr,
 		Value:    big.NewInt(1000),
 		Gas:      21420,
 		GasPrice: big.NewInt(670189871),

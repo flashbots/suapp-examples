@@ -54,7 +54,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: ^1.21
+          go-version: ^1.22
         id: go
 
       - name: Check out code into the Go module directory and submodules
@@ -67,7 +67,11 @@ jobs:
 
       - name: Run suave
         run: |
-          docker-compose up -d
+          make devnet-up
+
+      - name: Debug image names
+        run: |
+          docker images
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1

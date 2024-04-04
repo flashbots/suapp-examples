@@ -338,3 +338,13 @@ func (c *Chain) FundAccount(to common.Address, value *big.Int) error {
 	}
 	return nil
 }
+
+// GatewayAddr returns the IP address of the Docker gateway. This is,
+// the IP address to access the host machine.
+func GatewayAddr() string {
+	if os.Getenv("CI") == "true" {
+		// Inside Github actions, the 'host.docker.internal' does not seem to work.
+		return "172.17.0.1"
+	}
+	return "host.docker.internal"
+}
