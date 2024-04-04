@@ -49,12 +49,14 @@ func main() {
 		allowedPeekers := []common.Address{
 			buildEthBlockAddress,
 			bundleContract.Raw().Address(),
-			ethBlockContract.Raw().Address()}
+			ethBlockContract.Raw().Address(),
+		}
 		allowedStores := []common.Address{}
 		newBundleArgs := []any{
 			decryptionCondition,
 			allowedPeekers,
-			allowedStores}
+			allowedStores,
+		}
 
 		confidentialDataBytes, err := bundleContract.Abi.Methods["fetchConfidentialBundleData"].Outputs.Pack(bundleBytes)
 		maybe(err)

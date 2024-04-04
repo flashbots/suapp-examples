@@ -22,7 +22,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var r, s = txnSignatureEvent["r"].([32]byte), txnSignatureEvent["s"].([32]byte)
+	r, s := txnSignatureEvent["r"].([32]byte), txnSignatureEvent["s"].([32]byte)
 
 	if hex.EncodeToString(r[:]) != "eebcfac0def6db5649d0ae6b52ed3b8ba1f5c6c428588df125461113ba8c6749" {
 		log.Fatal("wrong r signature")

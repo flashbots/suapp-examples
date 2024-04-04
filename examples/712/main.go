@@ -152,7 +152,6 @@ func deployEthNFTEE(ethClient *ethclient.Client, signerAddr common.Address, auth
 }
 
 func mintNFTWithSignature(contractAddress common.Address, tokenID *big.Int, recipient common.Address, signature []byte, client *ethclient.Client, auth *bind.TransactOpts, sabi *abi.ABI) (bool, error) {
-
 	contract := bind.NewBoundContract(contractAddress, *sabi, client, client, client)
 
 	if len(signature) != 65 {
@@ -212,8 +211,7 @@ func (na *NFTEEApproval) Unpack(log *types.Log) error {
 	return eventABI.UnpackIntoInterface(na, "NFTEEApproval", log.Data)
 }
 
-type relayHandlerExample struct {
-}
+type relayHandlerExample struct{}
 
 func (rl *relayHandlerExample) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := io.ReadAll(r.Body)
