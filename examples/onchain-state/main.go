@@ -22,7 +22,7 @@ func main() {
 	fmt.Println("2. Send a confidential request that modifies the state")
 
 	contract.SendConfidentialRequest("example", nil, nil)
-	val, ok := contract.Call("getState")[0].(uint64)
+	val, ok := contract.Call("getState", []interface{}{})[0].(uint64)
 	if !ok {
 		fmt.Printf("expected uint64")
 		os.Exit(1)

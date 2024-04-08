@@ -116,8 +116,8 @@ type Contract struct {
 	Abi  *abi.ABI
 }
 
-func (c *Contract) Call(methodName string) []interface{} {
-	input, err := c.Abi.Pack(methodName)
+func (c *Contract) Call(methodName string, args []interface{}) []interface{} {
+	input, err := c.Abi.Pack(methodName, args...)
 	if err != nil {
 		panic(err)
 	}
