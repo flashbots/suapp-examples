@@ -23,12 +23,15 @@ func main() {
 	fundBalance := big.NewInt(100000000000000000)
 	maybe(fr.L1.FundAccount(testAddr1.Address(), fundBalance))
 
+	gasPrice, err := fr.L1.RPC().SuggestGasPrice(context.Background())
+	maybe(err)
+
 	targeAddr := testAddr1.Address()
 	tx, err := fr.L1.SignTx(testAddr1, &types.LegacyTx{
 		To:       &targeAddr,
 		Value:    big.NewInt(1000),
 		Gas:      21000,
-		GasPrice: big.NewInt(6701898710),
+		GasPrice: gasPrice.Add(gasPrice, big.NewInt(5000000000)),
 	})
 	maybe(err)
 
