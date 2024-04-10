@@ -254,13 +254,24 @@ type Chain struct {
 }
 
 func (c *Chain) DeployContract(path string) *Contract {
+	return c.DeployContractWithArgs(path, make([]interface{}, 0)...)
+}
+
+func (c *Chain) DeployContractWithArgs(path string, constructorArgs ...interface{}) *Contract {
 	artifact, err := ReadArtifact(path)
 	if err != nil {
 		panic(err)
 	}
 
+	// encode constructorArgs to append to the contract code
+	constructorData, err := artifact.Abi.Constructor.Inputs.Pack(constructorArgs...)
+	if err != nil {
+		panic(err)
+	}
+	deployCode := append(artifact.Code, constructorData...)
+
 	// deploy contract
-	txnResult, err := sdk.DeployContract(artifact.Code, c.clt)
+	txnResult, err := sdk.DeployContract(deployCode, c.clt)
 	if err != nil {
 		panic(err)
 	}
