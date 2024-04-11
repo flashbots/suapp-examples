@@ -166,7 +166,6 @@ func (c *Contract) SendConfidentialRequest(method string, args []interface{}, co
 	if err != nil {
 		// decode the PeekerReverted error
 		errMsg := err.Error()
-		log.Printf("suffix %s %v", errMsg[len(errMsg)-4:], strings.HasSuffix(errMsg, "10]'"))
 		if strings.HasPrefix(errMsg, executionRevertedPrefix) {
 			errMsg = errMsg[len(executionRevertedPrefix):]
 			errMsgBytes, _ := hex.DecodeString(errMsg)
