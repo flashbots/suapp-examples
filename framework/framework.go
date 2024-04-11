@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
@@ -145,12 +146,27 @@ func (c *Contract) Raw() *sdk.Contract {
 
 var executionRevertedPrefix = "execution reverted: 0x"
 
+// parseASCIIDecimals parses an ASCII array string into a byte array.
+//
+//	parse("0 1 2 3") == []byte{0, 1, 2, 3}
+func parseASCIIDecimals(asciiArray string) *[]byte {
+	// parse "byte array" bytes (decimals) into actual byte array
+	decodedBytes := make([]byte, len(asciiArray))
+	decimalWords := strings.Split(asciiArray, " ")
+	for i := 0; i < len(decimalWords); i++ {
+		b, _ := strconv.ParseUint(decimalWords[i], 10, 8)
+		decodedBytes[i] = byte(b)
+	}
+	return &decodedBytes
+}
+
 // SendConfidentialRequest sends the confidential request to the kettle
 func (c *Contract) SendConfidentialRequest(method string, args []interface{}, confidentialBytes []byte) *types.Receipt {
 	txnResult, err := c.contract.SendTransaction(method, args, confidentialBytes)
 	if err != nil {
 		// decode the PeekerReverted error
 		errMsg := err.Error()
+		log.Printf("suffix %s %v", errMsg[len(errMsg)-4:], strings.HasSuffix(errMsg, "10]'"))
 		if strings.HasPrefix(errMsg, executionRevertedPrefix) {
 			errMsg = errMsg[len(executionRevertedPrefix):]
 			errMsgBytes, _ := hex.DecodeString(errMsg)
@@ -160,6 +176,13 @@ func (c *Contract) SendConfidentialRequest(method string, args []interface{}, co
 			addr, _ := unpacked[0].(common.Address)
 			eventErr, _ := unpacked[1].([]byte)
 			panic(fmt.Sprintf("peeker 0x%x reverted: %s", addr, eventErr))
+		} else if strings.HasSuffix(errMsg, "10]'") { // ascii decimal array
+			log.Printf("found suffix")
+			// split "byte array" from error string
+			errChunks := strings.SplitAfter(errMsg, "[")
+			callErr := errChunks[0][:len(errChunks[0])-1]                         // removes "[" at the end
+			internalErr := parseASCIIDecimals(errChunks[1][:len(errChunks[1])-2]) // removes "']" at the end
+			panic(fmt.Sprintf("%s%s", callErr, string(*internalErr)))
 		}
 		panic(err)
 	}
