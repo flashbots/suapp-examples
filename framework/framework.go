@@ -176,7 +176,6 @@ func (c *Contract) SendConfidentialRequest(method string, args []interface{}, co
 			eventErr, _ := unpacked[1].([]byte)
 			panic(fmt.Sprintf("peeker 0x%x reverted: %s", addr, eventErr))
 		} else if strings.HasSuffix(errMsg, "10]'") { // ascii decimal array
-			log.Printf("found suffix")
 			// split "byte array" from error string
 			errChunks := strings.SplitAfter(errMsg, "[")
 			callErr := errChunks[0][:len(errChunks[0])-1]                         // removes "[" at the end
