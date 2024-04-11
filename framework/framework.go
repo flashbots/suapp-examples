@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -179,8 +180,9 @@ type Framework struct {
 	config        *Config
 	KettleAddress common.Address
 
-	Suave *Chain
-	L1    *Chain
+	Suave    *Chain
+	L1       *Chain
+	L1Beacon *BeaconChain
 }
 
 type Config struct {
@@ -191,6 +193,8 @@ type Config struct {
 	FundedAccount *PrivKey `env:"KETTLE_PRIVKEY, default=91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"`
 
 	L1RPC string `env:"L1_RPC, default=http://localhost:8555"`
+
+	L1BeaconURL string `env:"L1_BEACON_URL, default=https://ethereum-beacon-api.publicnode.com"`
 
 	// This account is funded in your local L1 devnet
 	// address: 0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F
@@ -242,6 +246,8 @@ func New(opts ...ConfigOption) *Framework {
 		}
 		l1Clt := sdk.NewClient(l1RPC, config.FundedAccountL1.Priv, common.Address{})
 		fr.L1 = &Chain{rpc: l1RPC, clt: l1Clt}
+
+		fr.L1Beacon = &BeaconChain{httpClient: http.DefaultClient, baseURL: config.L1BeaconURL}
 	}
 
 	return fr

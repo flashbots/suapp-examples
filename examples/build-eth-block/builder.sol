@@ -2,6 +2,7 @@
 pragma solidity ^0.8.8;
 
 import "suave-std/suavelib/Suave.sol";
+import {Suapp} from "suave-std/Suapp.sol";
 
 contract AnyBundleContract {
     event DataRecordEvent(Suave.DataId dataId, uint64 decryptionCondition, address[] allowedPeekers);
@@ -176,8 +177,10 @@ contract EthBlockContract is AnyBundleContract {
     }
 }
 
-contract EthBlockBidSenderContract is EthBlockContract {
+contract EthBlockBidSenderContract is EthBlockContract, Suapp {
     string boostRelayUrl;
+
+    event SubmitBlockResponse(bytes);
 
     constructor(string memory boostRelayUrl_) {
         boostRelayUrl = boostRelayUrl_;
@@ -186,16 +189,18 @@ contract EthBlockBidSenderContract is EthBlockContract {
     function buildAndEmit(
         Suave.BuildBlockArgs memory blockArgs,
         uint64 blockHeight,
-        Suave.DataId[] memory dataRecords,
+        Suave.DataId bidId,
         string memory namespace
-    ) public virtual override returns (bytes memory) {
+    ) public emitOffchainLogs returns (bytes memory) {
         require(Suave.isConfidential());
-
+        Suave.DataId[] memory dataRecords =
+            abi.decode(Suave.confidentialRetrieve(bidId, "default:v0:mergedDataRecords"), (Suave.DataId[]));
         (Suave.DataRecord memory blockDataRecord, bytes memory builderBid) =
             this.doBuild(blockArgs, blockHeight, dataRecords, namespace);
-        Suave.submitEthBlockToRelay(boostRelayUrl, builderBid);
+        bytes memory blockRes = Suave.submitEthBlockToRelay(boostRelayUrl, builderBid);
 
-        emit DataRecordEvent(blockDataRecord.id, blockDataRecord.decryptionCondition, blockDataRecord.allowedPeekers);
+        // emit DataRecordEvent(blockDataRecord.id, blockDataRecord.decryptionCondition, blockDataRecord.allowedPeekers);
+        // emit SubmitBlockResponse(blockRes);
         return bytes.concat(this.emitDataRecord.selector, abi.encode(blockDataRecord));
     }
 }
