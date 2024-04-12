@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/ethereum/go-ethereum/beacon/types"
@@ -11,83 +12,82 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
+// BeaconChain is a very-minimal client for interacting with the beacon chain.
 type BeaconChain struct {
 	httpClient *http.Client
 	baseURL    string
 }
 
-type BeaconClient struct {
-	chain *BeaconChain
+// GetBlockHeaderResponse is returned from GetBlockHeader.
+type GetBlockHeaderResponse struct {
+	ExecutionOptimistic bool `json:"execution_optimistic"`
+	Finalized           bool `json:"finalized"`
+	Data                []struct {
+		Root      common.Hash `json:"root"`
+		Canonical bool        `json:"canonical"`
+		Header    struct {
+			Message   types.Header  `json:"message"`
+			Signature hexutil.Bytes `json:"signature"`
+		} `json:"header"`
+	} `json:"data"`
 }
 
-func (b *BeaconChain) Http() *BeaconClient {
-	return &BeaconClient{chain: b}
+// GetProposerDutiesResponse is returned from GetProposerDuties.
+type GetProposerDutiesResponse struct {
+	DependentRoot       common.Hash `json:"dependent_root"`
+	ExecutionOptimistic bool        `json:"execution_optimistic"`
+	Data                []struct {
+		Pubkey         hexutil.Bytes `json:"pubkey"`
+		ValidatorIndex uint64        `json:"validator_index,string"`
+		Slot           uint64        `json:"slot,string"`
+	} `json:"data"`
 }
 
-func (b *BeaconClient) Get(url string) ([]byte, error) {
-	res, err := b.chain.httpClient.Get(url)
+// GetAndParse makes a GET request to the given URL and unmarshals the response into v.
+func GetAndParse[V interface{}](b *BeaconChain, url string, v V) error {
+	res, err := b.httpClient.Get(url)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(body, v); err != nil {
 		panic(err)
 	}
-	return body, nil
+	return nil
 }
 
-// type BeaconBlockHeader struct {
-// 	Slot          string      `json:"slot"`
-// 	ProposerIndex string      `json:"proposer_index"`
-// 	ParentRoot    common.Hash `json:"parent_root"`
-// 	StateRoot     common.Hash `json:"state_root"`
-// 	BodyRoot      common.Hash `json:"body_root"`
-// }
-
-// type SignedBeaconBlockHeader struct {
-// 	Message   BeaconBlockHeader `json:"message"`
-// 	Signature []byte            `json:"signature"`
-// }
-
-// type GetBlockHeaderData struct {
-// 	Root      common.Hash             `json:"root"`
-// 	Canonical bool                    `json:"canonical"`
-// 	Header    SignedBeaconBlockHeader `json:"header"`
-// }
-
-// type GetBlockHeaderResponse struct {
-// 	ExecutionOptimistic bool                 `json:"execution_optimistic"`
-// 	Finalized           bool                 `json:"finalized"`
-// 	Data                []GetBlockHeaderData `json:"data"`
-// }
+// getAndParse calls GetAndParse with the BeaconChain receiver.
+func (b *BeaconChain) getAndParse(url string, v any) error {
+	return GetAndParse(b, url, v)
+}
 
 // GetBlockHeader gets the beacon block header for a given beacon block ID, or the latest block if blockID is nil.
-func (b *BeaconChain) GetBlockHeader(blockID *common.Hash) (*types.Header, *common.Hash, error) {
+func (b *BeaconChain) GetBlockHeader(blockID *common.Hash) (*GetBlockHeaderResponse, error) {
 	url := fmt.Sprintf("%s/eth/v1/beacon/headers", b.baseURL)
 	if blockID != nil {
 		url = fmt.Sprintf("/%s", blockID)
 	}
 
-	var data struct {
-		ExecutionOptimistic bool `json:"execution_optimistic"`
-		Finalized           bool `json:"finalized"`
-		Data                []struct {
-			Root      common.Hash `json:"root"`
-			Canonical bool        `json:"canonical"`
-			Header    struct {
-				Message   types.Header  `json:"message"`
-				Signature hexutil.Bytes `json:"signature"`
-			} `json:"header"`
-		} `json:"data"`
-	}
-
-	body, err := b.Http().Get(url)
-	if err != nil {
-		return nil, nil, err
-	}
-	if err := json.Unmarshal(body, &data); err != nil {
+	data := new(GetBlockHeaderResponse)
+	if err := b.getAndParse(url, data); err != nil {
 		panic(err)
 	}
 
-	return &data.Data[0].Header.Message, &data.Data[0].Root, nil
+	return data, nil
+}
+
+// GetProposerDuties gets the proposer duties for a given epoch.
+func (b *BeaconChain) GetProposerDuties(epoch uint64) (*GetProposerDutiesResponse, error) {
+	url := fmt.Sprintf("%s/eth/v1/validator/duties/proposer/%d", b.baseURL, epoch)
+	log.Printf("url: %s", url)
+
+	data := new(GetProposerDutiesResponse)
+	if err := b.getAndParse(url, data); err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }

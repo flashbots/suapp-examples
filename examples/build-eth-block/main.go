@@ -7,7 +7,9 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/flashbots/suapp-examples/framework"
 )
@@ -68,64 +70,82 @@ func main() {
 		maybe(err)
 
 		_ = bundleContract.SendConfidentialRequest("newBundle", newBundleArgs, confidentialDataBytes)
+		log.Printf("finished newBundle")
 	}
 
-	var blockBidID any
-	{ // Signal to the builder that it's time to build a new block
-		payloadArgsTuple := types.BuildBlockArgs{
-			ProposerPubkey: []byte{0x42},
-			Timestamp:      targetBlock.Time() + 12, //  ethHead + uint64(12),
-			FeeRecipient:   common.Address{0x42},
-		}
+	var blockBidID [16]byte
+	// get latest blocks (exec & beacon) from live chain
+	execBlock, err := fr.L1.RPC().BlockByNumber(context.Background(), nil)
+	maybe(err)
+	execHeaderJSON, err := execBlock.Header().MarshalJSON()
+	log.Printf("execBlock header: %s", string(execHeaderJSON))
+	beaconRes, err := fr.L1Beacon.GetBlockHeader(nil)
+	maybe(err)
+	beaconBlock := beaconRes.Data[0]
+	blockJSON, err := json.Marshal(beaconBlock)
+	maybe(err)
+	log.Printf("beaconBlock header: %s (root=%s)", string(blockJSON), "")
+	var proposerPubkey []byte
 
-		receipt := ethBlockContract.SendConfidentialRequest("buildFromPool", []any{payloadArgsTuple, targetBlock.NumberU64() + 1}, nil)
+	targetSlot := beaconBlock.Header.Message.Slot + 1
+	epoch := beaconBlock.Header.Message.Epoch()
+	proposerDuties, err := fr.L1Beacon.GetProposerDuties(epoch)
+	maybe(err)
+	// find proposer duties for target slot
+	for _, duty := range proposerDuties.Data {
+		if duty.Slot == targetSlot {
+			dutyJSON, err := json.Marshal(duty)
+			maybe(err)
+			log.Printf("found proposer duty for slot %d, %s", targetSlot, dutyJSON)
+			proposerPubkey = duty.Pubkey
+			maybe(err)
+			break
+		}
+	}
+	pubkey, err := crypto.UnmarshalPubkey(proposerPubkey)
+	maybe(err)
+	proposerAddress := crypto.PubkeyToAddress(*pubkey)
+
+	blockArgs := types.BuildBlockArgs{
+		ProposerPubkey: proposerPubkey,
+		Timestamp:      getNewSlotTimestamp(beaconBlock.Header.Message.Slot),
+		FeeRecipient:   proposerAddress,
+		Parent:         execBlock.Hash(),
+		Slot:           targetSlot,
+		BeaconRoot:     *&beaconBlock.Root,
+	}
+
+	{ // Signal to the builder that it's time to build a new block
+		receipt := ethBlockContract.SendConfidentialRequest("buildFromPool", []any{blockArgs, targetBlock.NumberU64() + 1}, nil)
 		maybe(err)
 
 		for _, receiptLog := range receipt.Logs {
-			/// debug stuff ;; free to remove
-			logJSON, err := receiptLog.MarshalJSON()
-			maybe(err)
-			log.Printf("receipt log: %s", string(logJSON))
-			////////////////////////////////////////////////
-
-			if receiptLog.Topics[0] == ethBlockContract.Abi.Events["BuilderBoostBidEvent"].ID {
-				bids, err := ethBlockContract.Abi.Events["BuilderBoostBidEvent"].Inputs.Unpack(receiptLog.Data)
+			buildEvent := ethBlockContract.Abi.Events["BuilderBoostBidEvent"]
+			if receiptLog.Topics[0] == buildEvent.ID {
+				bids, err := buildEvent.Inputs.Unpack(receiptLog.Data)
 				maybe(err)
-				blockBidID = bids[0] // the one we want for the merged-bundles data records
+				blockBidID = bids[0].([16]byte)
+				break
 			}
 		}
+		log.Printf("finished buildFromPool")
 	}
 
 	{ // Submit block to the relay
-		// get latest block from live chain
-		// execBlock, err := fr.L1.RPC().BlockByNumber(context.Background(), nil)
-		maybe(err)
-		beaconBlock, beaconRoot, err := fr.L1Beacon.GetBlockHeader(nil)
-		maybe(err)
-		blockJSON, err := json.Marshal(beaconBlock)
-		maybe(err)
-		log.Printf("beaconBlock: %s", string(blockJSON))
-
-		blockArgs := types.BuildBlockArgs{
-			ProposerPubkey: []byte{0x42},
-			Timestamp:      getNewSlotTimestamp(beaconBlock.Slot), //  head + 12,
-			FeeRecipient:   testAddr1.Address(),
-			Parent:         *beaconRoot,
-			Slot:           beaconBlock.Slot + 1,
-		}
-
-		/*buildAndEmit(
-			Suave.BuildBlockArgs memory blockArgs,
-			uint64 blockHeight,
-			Suave.DataId bidId,
-			string memory namespace
-		) returns (bytes)*/
-		_ = ethBlockContract.SendConfidentialRequest("buildAndEmit", []any{
+		log.Printf("blockBidID: %s", hexutil.Encode(blockBidID[:]))
+		receipt := ethBlockContract.SendConfidentialRequest("submitToRelay", []any{
 			blockArgs,
-			targetBlock.NumberU64() + 1,
 			blockBidID,
 			"",
 		}, nil)
+		log.Printf("finished submitToRelay")
+
+		// get logs from ccr
+		for _, receiptLog := range receipt.Logs {
+			if receiptLog.Topics[0] == ethBlockContract.Abi.Events["SubmitBlockResponse"].ID {
+				log.Printf("SubmitBlockResponse: %s", receiptLog.Data)
+			}
+		}
 	}
 }
 
