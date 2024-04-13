@@ -54,7 +54,7 @@ func GetAndParse[V interface{}](b *BeaconChain, url string, v V) error {
 		return err
 	}
 	if err := json.Unmarshal(body, v); err != nil {
-		panic(err)
+		return err
 	}
 	return nil
 }
