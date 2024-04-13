@@ -73,7 +73,7 @@ func (b *BeaconChain) GetBlockHeader(blockID *common.Hash) (*GetBlockHeaderRespo
 
 	data := new(GetBlockHeaderResponse)
 	if err := b.getAndParse(url, data); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return data, nil

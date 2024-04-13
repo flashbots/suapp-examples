@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"log"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-
 	"github.com/flashbots/suapp-examples/framework"
 )
 
@@ -69,8 +68,11 @@ func main() {
 		confidentialDataBytes, err := bundleContract.Abi.Methods["fetchConfidentialBundleData"].Outputs.Pack(bundleBytes)
 		maybe(err)
 
+		// get current timestamp from system
+		startTime := time.Now().UnixMilli()
 		_ = bundleContract.SendConfidentialRequest("newBundle", newBundleArgs, confidentialDataBytes)
-		log.Printf("finished newBundle")
+		duration := time.Now().UnixMilli() - startTime
+		log.Printf("finished newBundle in %d ms", duration)
 	}
 
 	var blockBidID [16]byte
@@ -85,38 +87,42 @@ func main() {
 	blockJSON, err := json.Marshal(beaconBlock)
 	maybe(err)
 	log.Printf("beaconBlock header: %s (root=%s)", string(blockJSON), "")
-	var proposerPubkey []byte
 
 	targetSlot := beaconBlock.Header.Message.Slot + 1
 	epoch := beaconBlock.Header.Message.Epoch()
 	proposerDuties, err := fr.L1Beacon.GetProposerDuties(epoch)
+	var slotDuty struct { // TODO: replace w/ proper eth2 lib
+		Pubkey         hexutil.Bytes `json:"pubkey"`
+		ValidatorIndex uint64        `json:"validator_index,string"`
+		Slot           uint64        `json:"slot,string"`
+	}
 	maybe(err)
 	// find proposer duties for target slot
 	for _, duty := range proposerDuties.Data {
 		if duty.Slot == targetSlot {
+			slotDuty = duty
 			dutyJSON, err := json.Marshal(duty)
 			maybe(err)
 			log.Printf("found proposer duty for slot %d, %s", targetSlot, dutyJSON)
-			proposerPubkey = duty.Pubkey
 			maybe(err)
 			break
 		}
 	}
-	pubkey, err := crypto.UnmarshalPubkey(proposerPubkey)
-	maybe(err)
-	proposerAddress := crypto.PubkeyToAddress(*pubkey)
-
+	// decode BLS pubkey to Ethereum address
 	blockArgs := types.BuildBlockArgs{
-		ProposerPubkey: proposerPubkey,
+		ProposerPubkey: slotDuty.Pubkey,
 		Timestamp:      getNewSlotTimestamp(beaconBlock.Header.Message.Slot),
-		FeeRecipient:   proposerAddress,
+		FeeRecipient:   common.Address(testAddr1.Address()),
 		Parent:         execBlock.Hash(),
 		Slot:           targetSlot,
 		BeaconRoot:     *&beaconBlock.Root,
 	}
 
 	{ // Signal to the builder that it's time to build a new block
+		startTime := time.Now().UnixMilli()
 		receipt := ethBlockContract.SendConfidentialRequest("buildFromPool", []any{blockArgs, targetBlock.NumberU64() + 1}, nil)
+		duration := time.Now().UnixMilli() - startTime
+		log.Printf("finished buildFromPool in %d ms", duration)
 		maybe(err)
 
 		for _, receiptLog := range receipt.Logs {
@@ -133,12 +139,14 @@ func main() {
 
 	{ // Submit block to the relay
 		log.Printf("blockBidID: %s", hexutil.Encode(blockBidID[:]))
+		startTime := time.Now().UnixMilli()
 		receipt := ethBlockContract.SendConfidentialRequest("submitToRelay", []any{
 			blockArgs,
 			blockBidID,
 			"",
 		}, nil)
-		log.Printf("finished submitToRelay")
+		duration := time.Now().UnixMilli() - startTime
+		log.Printf("finished submitToRelay in %d ms", duration)
 
 		// get logs from ccr
 		for _, receiptLog := range receipt.Logs {
