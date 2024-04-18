@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	ethHttp "github.com/attestantio/go-eth2-client/http"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -201,9 +202,9 @@ type Framework struct {
 	config        *Config
 	KettleAddress common.Address
 
-	Suave    *Chain
-	L1       *Chain
-	L1Beacon *BeaconChain
+	Suave   *Chain
+	L1      *Chain
+	L1Boost *BoostHelper
 }
 
 type Config struct {
@@ -216,6 +217,7 @@ type Config struct {
 	L1RPC string `env:"L1_RPC, default=http://localhost:8555"`
 
 	L1BeaconURL string `env:"L1_BEACON_URL, default=https://ethereum-beacon-api.publicnode.com"`
+	L1RelayURL  string `env:"L1_RELAY_URL, default=https://boost-relay.flashbots.net"`
 
 	// This account is funded in your local L1 devnet
 	// address: 0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F
@@ -267,8 +269,13 @@ func New(opts ...ConfigOption) *Framework {
 		}
 		l1Clt := sdk.NewClient(l1RPC, config.FundedAccountL1.Priv, common.Address{})
 		fr.L1 = &Chain{rpc: l1RPC, clt: l1Clt}
+		beaconClient, err := ethHttp.New(context.Background(), ethHttp.WithAddress(config.L1BeaconURL))
 
-		fr.L1Beacon = &BeaconChain{httpClient: http.DefaultClient, baseURL: config.L1BeaconURL}
+		fr.L1Boost = &BoostHelper{
+			httpClient: http.DefaultClient,
+			relayURL:   config.L1RelayURL,
+			Eth2Client: beaconClient.(*ethHttp.Service),
+		}
 	}
 
 	return fr

@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/attestantio/go-eth2-client/api"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -80,42 +81,41 @@ func main() {
 	execBlock, err := fr.L1.RPC().BlockByNumber(context.Background(), nil)
 	maybe(err)
 	execHeaderJSON, err := execBlock.Header().MarshalJSON()
+	maybe(err)
 	log.Printf("execBlock header: %s", string(execHeaderJSON))
-	beaconRes, err := fr.L1Beacon.GetBlockHeader(nil)
+	beaconRes, err := fr.L1Boost.Eth2Client.BeaconBlockHeader(
+		context.Background(),
+		&api.BeaconBlockHeaderOpts{
+			Block: "head",
+		},
+	)
+	log.Printf("beaconRes: %v", beaconRes)
 	maybe(err)
-	beaconBlock := beaconRes.Data[0]
-	blockJSON, err := json.Marshal(beaconBlock)
-	maybe(err)
-	log.Printf("beaconBlock header: %s (root=%s)", string(blockJSON), "")
+	beaconHeader := beaconRes.Data.Header
+	targetSlot := beaconHeader.Message.Slot + 1
+	beaconRoot := beaconRes.Data.Root
 
-	targetSlot := beaconBlock.Header.Message.Slot + 1
-	epoch := beaconBlock.Header.Message.Epoch()
-	proposerDuties, err := fr.L1Beacon.GetProposerDuties(epoch)
-	var slotDuty struct { // TODO: replace w/ proper eth2 lib
-		Pubkey         hexutil.Bytes `json:"pubkey"`
-		ValidatorIndex uint64        `json:"validator_index,string"`
-		Slot           uint64        `json:"slot,string"`
-	}
+	validators, err := fr.L1Boost.GetValidators()
+	var slotDuty framework.BuilderGetValidatorsResponseEntry
 	maybe(err)
-	// find proposer duties for target slot
-	for _, duty := range proposerDuties.Data {
-		if duty.Slot == targetSlot {
-			slotDuty = duty
-			dutyJSON, err := json.Marshal(duty)
-			maybe(err)
-			log.Printf("found proposer duty for slot %d, %s", targetSlot, dutyJSON)
-			maybe(err)
+	for _, validator := range *validators {
+		if validator.Slot == uint64(targetSlot) {
+			slotDuty = validator
+			log.Printf("found proposer duty for slot %d, %v", targetSlot, slotDuty)
 			break
 		}
 	}
+
 	// decode BLS pubkey to Ethereum address
+	proposerPubkey, err := slotDuty.Entry.Message.Pubkey.MarshalJSON()
+	maybe(err)
 	blockArgs := types.BuildBlockArgs{
-		ProposerPubkey: slotDuty.Pubkey,
-		Timestamp:      getNewSlotTimestamp(beaconBlock.Header.Message.Slot),
-		FeeRecipient:   common.Address(testAddr1.Address()),
+		ProposerPubkey: proposerPubkey,
+		Timestamp:      getNewSlotTimestamp(uint64(targetSlot)),
+		FeeRecipient:   common.Address(slotDuty.Entry.Message.FeeRecipient),
 		Parent:         execBlock.Hash(),
-		Slot:           targetSlot,
-		BeaconRoot:     *&beaconBlock.Root,
+		Slot:           uint64(targetSlot),
+		BeaconRoot:     common.Hash(beaconRoot),
 	}
 
 	{ // Signal to the builder that it's time to build a new block
@@ -158,9 +158,9 @@ func main() {
 }
 
 // Calculate the timestamp for a new slot.
-func getNewSlotTimestamp(slot uint64) uint64 {
-	return 1712816195 + (slot-8832680)*12
-}
+func getNewSlotTimestamp(targetSlot uint64) uint64 {
+	return 1712816195 + (targetSlot-8832681)*12
+} // lol
 
 func currentL1Block(fr *framework.Framework) *types.Block {
 	b, err := fr.L1.RPC().BlockByNumber(context.Background(), nil)
