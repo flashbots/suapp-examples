@@ -8,13 +8,11 @@ import (
 	"net/http"
 
 	builderApiV1 "github.com/attestantio/go-builder-client/api/v1"
-	ethHttp "github.com/attestantio/go-eth2-client/http"
 )
 
-// BoostHelper is a very-minimal client for interacting with the beacon chain.
-type BoostHelper struct {
+// RelayClient is a very-minimal client for interacting with the mev-boost relay.
+type RelayClient struct {
 	httpClient *http.Client
-	Eth2Client *ethHttp.Service
 	relayURL   string
 }
 
@@ -30,7 +28,7 @@ type BuilderGetValidatorsResponseEntry struct {
 }
 
 // GetAndParse makes a GET request to the given URL and unmarshals the response into v.
-func GetAndParse[V interface{}](b *BoostHelper, url string, v V) error {
+func GetAndParse[V interface{}](b *RelayClient, url string, v V) error {
 	res, err := b.httpClient.Get(url)
 	if err != nil {
 		return err
@@ -45,13 +43,13 @@ func GetAndParse[V interface{}](b *BoostHelper, url string, v V) error {
 	return nil
 }
 
-// getAndParse calls GetAndParse with the BoostHelper receiver.
-func (b *BoostHelper) getAndParse(url string, v any) error {
+// getAndParse calls GetAndParse with the RelayClient receiver.
+func (b *RelayClient) getAndParse(url string, v any) error {
 	return GetAndParse(b, url, v)
 }
 
 // GetValidators gets current & upcoming validators from the mev-boost relay.
-func (b *BoostHelper) GetValidators() (*[]BuilderGetValidatorsResponseEntry, error) {
+func (b *RelayClient) GetValidators() (*[]BuilderGetValidatorsResponseEntry, error) {
 	url := fmt.Sprintf("%s/relay/v1/builder/validators", b.relayURL)
 	log.Printf("url: %s", url)
 

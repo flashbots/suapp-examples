@@ -83,7 +83,7 @@ func main() {
 	execHeaderJSON, err := execBlock.Header().MarshalJSON()
 	maybe(err)
 	log.Printf("execBlock header: %s", string(execHeaderJSON))
-	beaconRes, err := fr.L1Boost.Eth2Client.BeaconBlockHeader(
+	beaconRes, err := fr.L1Beacon.BeaconBlockHeader(
 		context.Background(),
 		&api.BeaconBlockHeaderOpts{
 			Block: "head",
@@ -95,7 +95,7 @@ func main() {
 	targetSlot := beaconHeader.Message.Slot + 1
 	beaconRoot := beaconRes.Data.Root
 
-	validators, err := fr.L1Boost.GetValidators()
+	validators, err := fr.L1Relay.GetValidators()
 	var slotDuty framework.BuilderGetValidatorsResponseEntry
 	maybe(err)
 	for _, validator := range *validators {

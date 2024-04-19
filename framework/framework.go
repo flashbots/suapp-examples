@@ -202,9 +202,10 @@ type Framework struct {
 	config        *Config
 	KettleAddress common.Address
 
-	Suave   *Chain
-	L1      *Chain
-	L1Boost *BoostHelper
+	Suave    *Chain
+	L1       *Chain
+	L1Relay  *RelayClient
+	L1Beacon *ethHttp.Service
 }
 
 type Config struct {
@@ -270,11 +271,10 @@ func New(opts ...ConfigOption) *Framework {
 		l1Clt := sdk.NewClient(l1RPC, config.FundedAccountL1.Priv, common.Address{})
 		fr.L1 = &Chain{rpc: l1RPC, clt: l1Clt}
 		beaconClient, err := ethHttp.New(context.Background(), ethHttp.WithAddress(config.L1BeaconURL))
-
-		fr.L1Boost = &BoostHelper{
+		fr.L1Beacon = beaconClient.(*ethHttp.Service)
+		fr.L1Relay = &RelayClient{
 			httpClient: http.DefaultClient,
 			relayURL:   config.L1RelayURL,
-			Eth2Client: beaconClient.(*ethHttp.Service),
 		}
 	}
 
