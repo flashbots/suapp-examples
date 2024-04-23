@@ -121,9 +121,10 @@ func main() {
 	{ // Signal to the builder that it's time to build a new block
 		startTime := time.Now().UnixMilli()
 		receipt := ethBlockContract.SendConfidentialRequest("buildFromPool", []any{blockArgs, targetBlock.NumberU64() + 1}, nil)
+		maybe(err)
+
 		duration := time.Now().UnixMilli() - startTime
 		log.Printf("finished buildFromPool in %d ms", duration)
-		maybe(err)
 
 		for _, receiptLog := range receipt.Logs {
 			buildEvent := ethBlockContract.Abi.Events["BuilderBoostBidEvent"]
@@ -139,12 +140,19 @@ func main() {
 
 	{ // Submit block to the relay
 		log.Printf("blockBidID: %s", hexutil.Encode(blockBidID[:]))
+		pre := uint64(1)
+		for uint64(time.Now().Unix()) < blockArgs.Timestamp-pre {
+			log.Printf("waiting for block. T-%d seconds...", blockArgs.Timestamp-pre-uint64(time.Now().Unix()))
+			time.Sleep(1 * time.Second)
+		}
+
 		startTime := time.Now().UnixMilli()
 		receipt := ethBlockContract.SendConfidentialRequest("submitToRelay", []any{
 			blockArgs,
 			blockBidID,
 			"",
 		}, nil)
+
 		duration := time.Now().UnixMilli() - startTime
 		log.Printf("finished submitToRelay in %d ms", duration)
 
