@@ -88,7 +88,7 @@ func deploySuaveEmitter(privKey *framework.PrivKey) (common.Address, common.Hash
 	tokenID := big.NewInt(NFTEETokenID)
 
 	// Call createEIP712Digest to generate digestHash
-	digestHash := contract.Call("createEIP712Digest", []interface{}{tokenID, addr})
+	digestHash := contract.Call("mintDigest", []interface{}{tokenID, addr})
 
 	// Call signL1MintApproval and compare signatures
 	receipt := emitterContract.SendConfidentialRequest("signL1MintApproval", []interface{}{tokenID, addr}, nil)
