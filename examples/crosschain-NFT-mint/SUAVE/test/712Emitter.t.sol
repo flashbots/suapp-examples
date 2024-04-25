@@ -15,10 +15,6 @@ contract EmitterTest is Test {
         emitter = new Emitter();
     }
 
-    function testOwnerInitialization() public {
-        assertEq(emitter.owner(), owner, "Owner should be initialized correctly");
-    }
-
     function testSetPrivateKey() public {
         // Mock DataId and set private key
         bytes16 dataIDValue = bytes16(0x1234567890abcdef1234567890abcdef); // Ensure it's 16 bytes

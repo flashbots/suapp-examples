@@ -198,6 +198,9 @@ type Config struct {
 
 	// Whether to enable L1 or not
 	L1Enabled bool
+
+	// OpenAI API key
+	OpenAIKey *string `env:"OPENAI_KEY"`
 }
 
 type ConfigOption func(c *Config)
