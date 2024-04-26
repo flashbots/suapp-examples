@@ -200,7 +200,7 @@ type Config struct {
 	L1Enabled bool
 
 	// OpenAI API key
-	OpenAIKey *string `env:"OPENAI_KEY"`
+	OpenAIKey string `env:"OPENAI_KEY"`
 }
 
 type ConfigOption func(c *Config)
@@ -256,6 +256,13 @@ type Chain struct {
 	kettleAddr common.Address
 }
 
+// DeployContract deploys a contract at the given path.
+//
+// path is relative to out/.
+//
+// # Example
+//
+//	path = "MyContract.sol/ContractName.json"
 func (c *Chain) DeployContract(path string) *Contract {
 	artifact, err := ReadArtifact(path)
 	if err != nil {

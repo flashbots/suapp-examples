@@ -19,7 +19,7 @@ contract ChatNFT {
     }
 
     struct MintNFTConfidentialParams {
-        bytes32 privateKey;
+        bytes privateKey;
         address recipient;
         string[] prompts;
         string openaiApiKey;
@@ -33,7 +33,7 @@ contract ChatNFT {
     }
 
     /// Logs the query result.
-    function onMintNFT(bytes memory queryResult, bytes memory signature, uint256 tokenId) public confidential {
+    function onMintNFT(bytes memory queryResult, uint256 tokenId, bytes memory signature) public {
         emit QueryResult(queryResult);
         emit NFTCreated(tokenId, signature);
     }
@@ -44,6 +44,7 @@ contract ChatNFT {
         // parse confidential inputs
         bytes memory cInputs = Suave.confidentialInputs();
         MintNFTConfidentialParams memory cParams = abi.decode(cInputs, (MintNFTConfidentialParams));
+        uint256 tokenId = getTokenId(cParams.prompts);
 
         // query ChatGPT
         ChatGPT chatGPT = new ChatGPT(cParams.openaiApiKey);
@@ -55,23 +56,9 @@ contract ChatNFT {
 
         // for signing NFT-minting approvals
         Emitter emitter = new Emitter();
-
-        // define confidential data store access
-        address[] memory peekers = new address[](2);
-        peekers[0] = address(this);
-        peekers[1] = address(emitter);
-
-        // store private key in confidential data store
-        Suave.DataRecord memory privateKeyRecord = Suave.newDataRecord(0, peekers, peekers, "privateKey");
-        Suave.confidentialStore(privateKeyRecord.id, "pkey", abi.encode(cParams.privateKey));
-
-        // set up emitter to sign w/ user's private key
-        emitter.setPrivateKey(privateKeyRecord.id);
-        uint256 tokenId = getTokenId(cParams.prompts);
-        // sign the mint approval
-        bytes memory signature = emitter.signMintApproval(tokenId, cParams.recipient);
+        bytes memory signature = emitter.signMintApproval(tokenId, cParams.recipient, cParams.privateKey);
 
         // Callback emits the query result.
-        suaveCalldata = abi.encodeWithSelector(this.onMintNFT.selector, queryResult, signature, tokenId);
+        suaveCalldata = abi.encodeWithSelector(this.onMintNFT.selector, queryResult, tokenId, signature);
     }
 }

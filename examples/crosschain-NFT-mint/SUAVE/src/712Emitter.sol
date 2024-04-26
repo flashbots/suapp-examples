@@ -77,15 +77,17 @@ contract Emitter {
         require(Suave.isConfidential());
         require(Suave.DataId.unwrap(privateKeyDataID) != bytes16(0), "private key is not set");
 
-        bytes memory msgBytes = signMintApproval(tokenId, recipient);
-
+        bytes memory signerPrivateKey = Suave.confidentialRetrieve(privateKeyDataID, cstoreKey);
+        bytes memory msgBytes = signMintApproval(tokenId, recipient, signerPrivateKey);
         return bytes.concat(this.emitSignedMintApproval.selector, abi.encode(msgBytes));
     }
 
     /// Returns signature of the mint approval.
-    function signMintApproval(uint256 tokenId, address recipient) public returns (bytes memory msgBytes) {
+    function signMintApproval(uint256 tokenId, address recipient, bytes memory signerPrivateKey)
+        public
+        returns (bytes memory signature)
+    {
         bytes memory _digest = mintDigest(tokenId, recipient);
-        bytes memory signerPrivateKey = Suave.confidentialRetrieve(privateKeyDataID, cstoreKey);
-        msgBytes = Suave.signMessage(_digest, Suave.CryptoSignature.SECP256, string(signerPrivateKey));
+        signature = Suave.signMessage(_digest, Suave.CryptoSignature.SECP256, string(signerPrivateKey));
     }
 }
