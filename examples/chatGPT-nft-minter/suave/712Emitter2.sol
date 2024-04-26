@@ -5,7 +5,7 @@ import "suave-std/suavelib/Suave.sol";
 
 contract Emitter {
     // Constants matching those in SuaveNFT
-    string public constant NAME = "SUAVE_NFT";
+    string public constant NAME = "SUAVE_NFT2";
     string public constant SYMBOL = "NFTEE";
     bytes32 public constant MINT_TYPEHASH = 0x686aa0ee2a8dd75ace6f66b3a5e79d3dfd8e25e05a5e494bb85e72214ab37880;
     bytes32 public constant DOMAIN_SEPARATOR = 0x07c5db21fddca4952bc7dee96ea945c5702afed160b9697111b37b16b1289b89;
