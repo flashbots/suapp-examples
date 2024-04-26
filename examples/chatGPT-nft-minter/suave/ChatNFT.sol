@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Suave} from "suave-std/suavelib/Suave.sol";
 import {ChatGPT} from "suave-std/protocols/ChatGPT.sol";
-import {Emitter} from "../../crosschain-NFT-mint/SUAVE/src/712Emitter.sol";
+import {Emitter} from "./712Emitter2.sol";
 
 /// @title ChatNFT: ChatGPT-based NFT Creator
 /// @dev ChatNFT is responsible for querying ChatGPT on behalf of the user,
@@ -26,16 +26,16 @@ contract ChatNFT {
     }
 
     event QueryResult(bytes result);
-    event NFTCreated(uint256 tokenId, bytes signature);
+    event NFTCreated(uint256 tokenId, address recipient, bytes signature);
 
     function getTokenId(string[] memory prompts) public pure returns (uint256) {
         return uint256(keccak256(abi.encode(prompts)));
     }
 
     /// Logs the query result.
-    function onMintNFT(bytes memory queryResult, uint256 tokenId, bytes memory signature) public {
+    function onMintNFT(bytes memory queryResult, uint256 tokenId, address recipient, bytes memory signature) public {
         emit QueryResult(queryResult);
-        emit NFTCreated(tokenId, signature);
+        emit NFTCreated(tokenId, recipient, signature);
     }
 
     /// Makes a query to ChatGPT with prompts given via confidentialInputs.
@@ -56,9 +56,11 @@ contract ChatNFT {
 
         // for signing NFT-minting approvals
         Emitter emitter = new Emitter();
-        bytes memory signature = emitter.signMintApproval(tokenId, cParams.recipient, cParams.privateKey);
+        bytes memory signature =
+            emitter.signMintApproval(tokenId, cParams.recipient, string(queryResult), cParams.privateKey);
 
         // Callback emits the query result.
-        suaveCalldata = abi.encodeWithSelector(this.onMintNFT.selector, queryResult, tokenId, signature);
+        suaveCalldata =
+            abi.encodeWithSelector(this.onMintNFT.selector, queryResult, tokenId, cParams.recipient, signature);
     }
 }

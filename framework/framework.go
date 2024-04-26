@@ -283,7 +283,7 @@ func (c *Chain) DeployContract(path string) *Contract {
 		panic(fmt.Errorf("transaction failed"))
 	}
 
-	log.Printf("deployed contract at %s", receipt.ContractAddress.Hex())
+	log.Printf("deployed contract to SUAVE (txhash=%s)", receipt.TxHash.Hex())
 
 	contract := sdk.GetContract(receipt.ContractAddress, artifact.Abi, c.clt)
 	return &Contract{addr: receipt.ContractAddress, clt: c.clt, kettleAddr: c.kettleAddr, Abi: artifact.Abi, contract: contract}

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.19;
 
 import {ERC721} from "solmate/tokens/ERC721.sol";
 
@@ -20,60 +20,73 @@ contract SuaveNFT is ERC721 {
     // Authorized signer's address
     address public authorizedSigner;
 
+    // token data
+    mapping(uint256 => string) private _tokenDatas;
+
     // NFT Details
-    string public constant NAME = "SUAVE_NFT";
+    string public constant NAME = "SUAVE_NFT2";
     string public constant SYMBOL = "NFTEE";
-    string public constant TOKEN_URI = "IPFS_URL";
 
     constructor(address _authorizedSigner) ERC721(NAME, SYMBOL) {
         authorizedSigner = _authorizedSigner;
-
-        // TODO: Make dynamic
-        // // Initialize DOMAIN_SEPARATOR with EIP-712 domain separator, specific to your contract
-        // DOMAIN_SEPARATOR = keccak256(
-        //     abi.encode(
-        //         keccak256("EIP712Domain(string name,string symbol,uint256 chainId,address verifyingContract)"),
-        //         keccak256(bytes(NAME)),
-        //         keccak256(bytes(SYMBOL)),
-        //         block.chainid,
-        //         address(this)
-        //     )
-        // );
     }
 
     // Mint NFT with a signed EIP-712 message
-    function mintNFTWithSignature(uint256 tokenId, address recipient, uint8 v, bytes32 r, bytes32 s) external {
-        require(verifyEIP712Signature(tokenId, recipient, v, r, s), "INVALID_SIGNATURE");
+    function mintNFTWithSignature(
+        uint256 tokenId,
+        address recipient,
+        string memory content,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
+        require(verifyEIP712Signature(tokenId, recipient, content, v, r, s), "INVALID_SIGNATURE");
 
         _safeMint(recipient, tokenId);
+        _tokenDatas[tokenId] = content;
 
         emit NFTMintedEvent(recipient, tokenId);
     }
 
     // Verify EIP-712 signature
-    function verifyEIP712Signature(uint256 tokenId, address recipient, uint8 v, bytes32 r, bytes32 s)
-        internal
-        view
-        returns (bool)
-    {
+    function verifyEIP712Signature(
+        uint256 tokenId,
+        address recipient,
+        string memory content,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) internal view returns (bool) {
         bytes32 digestHash = keccak256(
             abi.encodePacked(
                 "\x19\x01",
                 DOMAIN_SEPARATOR,
                 keccak256(
-                    abi.encode(MINT_TYPEHASH, keccak256(bytes(NAME)), keccak256(bytes(SYMBOL)), tokenId, recipient)
+                    abi.encode(
+                        MINT_TYPEHASH,
+                        keccak256(bytes(NAME)),
+                        keccak256(bytes(SYMBOL)),
+                        tokenId,
+                        recipient,
+                        keccak256(bytes(content))
+                    )
                 )
             )
         );
 
         address recovered = ecrecover(digestHash, v, r, s);
-
         return recovered == authorizedSigner;
     }
 
-    // Token URI implementation
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_ownerOf[tokenId] != address(0), "NOT_MINTED");
-        return TOKEN_URI;
+    function _exists(uint256 tokenId) internal view returns (bool) {
+        return keccak256(bytes(_tokenDatas[tokenId])) != keccak256("");
+    }
+
+    /// Hijack `tokenURI` function to comply w/ ERC721 standard,
+    /// but we're just using it to hold string data for NFTs.
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
+        string memory _tokenData = _tokenDatas[tokenId];
+        return _tokenData;
     }
 }

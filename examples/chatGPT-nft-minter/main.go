@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"unicode/utf8"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -58,32 +59,35 @@ func generateNFT(cfg *framework.Config, privKey *framework.PrivKey, chatNft *fra
 	return receipt
 }
 
-func parseNFTLogs(chatNft *framework.Contract, receipt *types.Receipt) {
+type QueryResult struct {
+	Result hexutil.Bytes `json:"result"`
+}
+type NftCreated struct {
+	TokenID   *big.Int        `json:"tokenId"`
+	Recipient *common.Address `json:"recipient"`
+	Signature []byte          `json:"signature"`
+}
+
+func parseNFTLogs(chatNft *framework.Contract, receipt *types.Receipt) (*QueryResult, *NftCreated) {
 	// Parse logs
 	// Find and decode the QueryResult and NFTCreated events
+	var queryResult *QueryResult
+	var nftCreated *NftCreated
 	for _, logEvent := range receipt.Logs {
 		switch logEvent.Topics[0].Hex() {
 		case chatNft.Abi.Events["QueryResult"].ID.Hex():
-			var queryResult struct {
-				Result hexutil.Bytes `json:"result"`
-			}
 			err := chatNft.Abi.Events["QueryResult"].ParseLogToObject(&queryResult, logEvent)
 			if err != nil {
 				log.Fatalf("Failed to unpack QueryResult event: %v", err)
 			}
-			fmt.Printf("QueryResult: %s\n", queryResult.Result)
 		case chatNft.Abi.Events["NFTCreated"].ID.Hex():
-			var nftCreated struct {
-				TokenID   *big.Int `json:"tokenId"`
-				Signature []byte   `json:"signature"`
-			}
 			err := chatNft.Abi.Events["NFTCreated"].ParseLogToObject(&nftCreated, logEvent)
 			if err != nil {
 				log.Fatalf("Failed to unpack NFTCreated event: %v", err)
 			}
-			fmt.Printf("Generated NFT. (id=%s) (signature=%s)\n", nftCreated.TokenID, common.Bytes2Hex(nftCreated.Signature))
 		}
 	}
+	return queryResult, nftCreated
 }
 
 func deployEthNFTEE(ethClient *ethclient.Client, signerAddr common.Address, auth *bind.TransactOpts) (common.Address, common.Hash, *framework.Artifact) {
@@ -99,7 +103,7 @@ func deployEthNFTEE(ethClient *ethclient.Client, signerAddr common.Address, auth
 	}
 
 	// Wait for the transaction to be included
-	fmt.Println("Waiting for contract deployment transaction to be included...")
+	log.Println("Waiting for contract deployment transaction to be included...")
 	receipt, err := bind.WaitMined(context.Background(), ethClient, tx)
 	if err != nil {
 		log.Fatalf("Error waiting for contract deployment transaction to be included: %v", err)
@@ -110,9 +114,48 @@ func deployEthNFTEE(ethClient *ethclient.Client, signerAddr common.Address, auth
 		return common.Address{}, common.Hash{}, artifact
 	}
 
-	fmt.Println("Contract deployed, address:", receipt.ContractAddress.Hex())
-
 	return receipt.ContractAddress, tx.Hash(), artifact
+}
+
+func mintNFTWithSignature(contractAddress common.Address, tokenID *big.Int, recipient common.Address, content string, signature []byte, client *ethclient.Client, auth *bind.TransactOpts, sabi *abi.ABI) (*types.Receipt, error) {
+	contract := bind.NewBoundContract(contractAddress, *sabi, client, client, client)
+
+	if len(signature) != 65 {
+		return nil, fmt.Errorf("signature must be 65 bytes long")
+	}
+
+	// Extract r, s, and v
+	r := [32]byte{}
+	s := [32]byte{}
+	copy(r[:], signature[:32])   // First 32 bytes
+	copy(s[:], signature[32:64]) // Next 32 bytes
+
+	v := signature[64] // Last byte
+
+	// Ethereum signatures are [R || S || V]
+	// Where V is 0 or 1, it must be adjusted to 27 or 28
+	if v == 0 || v == 1 {
+		v += 27
+	}
+
+	tx, err := contract.Transact(auth, "mintNFTWithSignature", tokenID, recipient, content, v, r, s)
+	if err != nil {
+		return nil, fmt.Errorf("mintNFTWithSignature transaction failed: %v", err)
+	}
+
+	// Wait for the transaction to be included
+	log.Println("Waiting for mint transaction to be included...")
+	receipt, err := bind.WaitMined(context.Background(), client, tx)
+	if err != nil {
+		return nil, fmt.Errorf("waiting for mint transaction mining failed: %v", err)
+	}
+
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		return nil, fmt.Errorf("Mint transaction failed: receipt status %v", receipt.Status)
+	}
+
+	log.Println("NFT minted successfully, transaction hash:", receipt.TxHash.Hex())
+	return receipt, nil
 }
 
 func main() {
@@ -120,12 +163,12 @@ func main() {
 	if err := envconfig.Process(context.Background(), &cfg); err != nil {
 		log.Fatal(err)
 	}
-	frL1 := framework.New(framework.WithL1())
-	ethClient := frL1.L1.RPC()
+	fr := framework.New(framework.WithL1())
+	ethClient := fr.L1.RPC()
 
 	// create private key to be used on SUAVE and Eth L1
 	privKey := cfg.FundedAccountL1
-	fmt.Printf("SUAVE Signer Address: %s\n", privKey.Address())
+	log.Printf("SUAVE Signer Address: %s\n", privKey.Address())
 
 	// create tx signer
 	auth, err := bind.NewKeyedTransactorWithChainID(privKey.Priv, big.NewInt(EthChainID)) // Chain ID for Goerli
@@ -134,25 +177,47 @@ func main() {
 	}
 
 	// Deploy SUAVE L1 Contract (ChatNFT.sol)
-	chatNft := frL1.Suave.DeployContract("ChatNFT.sol/ChatNFT.json")
+	chatNft := fr.Suave.DeployContract("ChatNFT.sol/ChatNFT.json")
+	log.Printf("ChatNFT deployed on SUAVE (address=%s)", chatNft.Raw().Address())
 
 	// Deploy Ethereum L1 Contract
-	ethContractAddress, ethTxHash, artifact := deployEthNFTEE(ethClient, privKey.Address(), auth)
-	fmt.Printf("Ethereum Contract deployed at: %s\n", ethContractAddress.Hex())
-	fmt.Printf("Ethereum Transaction Hash: %s\n", ethTxHash.Hex())
-	if artifact != nil {
-		fmt.Printf("Artifact: OK\n")
+	nfteeAddress, nfteeTxHash, nfteeArtifact := deployEthNFTEE(ethClient, privKey.Address(), auth)
+	log.Printf("NFTEE deployed on L1 (%s): %s\n", nfteeTxHash.Hex(), nfteeAddress.Hex())
+
+	// Create NFT on SUAVE (sign a message to approve a mint on L1)
+	receipt := generateNFT(&cfg, privKey, chatNft)
+	queryResult, nftCreated := parseNFTLogs(chatNft, receipt)
+	log.Printf("QueryResult: %s\n", queryResult.Result.String())
+	log.Printf("tokenId: %s\n", nftCreated.TokenID)
+	log.Printf("signature: %s\n", common.Bytes2Hex(nftCreated.Signature))
+
+	decodedResult, err := hexutil.Decode(queryResult.Result.String())
+	if err != nil {
+		log.Fatalf("Failed to decode QueryResult: %v", err)
+	}
+	if utf8.Valid(decodedResult) {
+		log.Printf("QueryResult decoded: %s\n", string(decodedResult))
 	} else {
-		log.Fatalf("Artifact is nil")
+		log.Printf("(invalid utf8) QueryResult decoded: %s\n", decodedResult)
 	}
 
-	// Get signature to mint NFT
-	/* struct MintNFTConfidentialParams {
-	    bytes32 privateKey;
-	    address recipient;
-	    string[] prompts;
-	    string openaiApiKey;
-	}*/
-	receipt := generateNFT(&cfg, privKey, chatNft)
-	parseNFTLogs(chatNft, receipt)
+	// Mint NFT on L1 Ethereum
+	receipt, err = mintNFTWithSignature(nfteeAddress, nftCreated.TokenID, *nftCreated.Recipient, string(decodedResult), nftCreated.Signature, ethClient, auth, nfteeArtifact.Abi)
+	if err != nil {
+		log.Fatalf("Failed to mint NFT: %v", err)
+	}
+	if receipt.Status == types.ReceiptStatusSuccessful {
+		log.Println("NFT minted successfully!")
+	} else {
+		log.Fatalf("Failed to mint NFT")
+		return
+	}
+
+	// call tokenURI method to check our NFT
+	contract := bind.NewBoundContract(nfteeAddress, *nfteeArtifact.Abi, ethClient, ethClient, ethClient)
+	var tokenURI []interface{}
+	contract.Call(&bind.CallOpts{
+		Context: context.Background(),
+	}, &tokenURI, "tokenURI", nftCreated.TokenID)
+	log.Printf("TokenURI: %v\n", tokenURI)
 }
