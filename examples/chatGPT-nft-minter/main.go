@@ -87,7 +87,7 @@ func parseNFTLogs(chatNft *framework.Contract, receipt *types.Receipt) {
 }
 
 func deployEthNFTEE(ethClient *ethclient.Client, signerAddr common.Address, auth *bind.TransactOpts) (common.Address, common.Hash, *framework.Artifact) {
-	artifact, err := framework.ReadArtifact("NFTEE.sol/SuaveNFT.json")
+	artifact, err := framework.ReadArtifact("NFTEE2.sol/SuaveNFT.json")
 	if err != nil {
 		panic(err)
 	}
