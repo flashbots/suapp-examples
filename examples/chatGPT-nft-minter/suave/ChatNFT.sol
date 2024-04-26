@@ -28,8 +28,8 @@ contract ChatNFT {
     event QueryResult(bytes result);
     event NFTCreated(uint256 tokenId, address recipient, bytes signature);
 
-    function getTokenId(string[] memory prompts) public pure returns (uint256) {
-        return uint256(keccak256(abi.encode(prompts)));
+    function newTokenId(string[] memory prompts) private view returns (uint256) {
+        return uint256(keccak256(abi.encode(prompts, block.timestamp, msg.sender)));
     }
 
     /// Logs the query result.
@@ -44,7 +44,7 @@ contract ChatNFT {
         // parse confidential inputs
         bytes memory cInputs = Suave.confidentialInputs();
         MintNFTConfidentialParams memory cParams = abi.decode(cInputs, (MintNFTConfidentialParams));
-        uint256 tokenId = getTokenId(cParams.prompts);
+        uint256 tokenId = newTokenId(cParams.prompts);
 
         // query ChatGPT
         ChatGPT chatGPT = new ChatGPT(cParams.openaiApiKey);
