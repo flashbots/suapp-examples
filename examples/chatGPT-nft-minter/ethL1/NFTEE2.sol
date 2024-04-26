@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {ERC721} from "solmate/tokens/ERC721.sol";
 
-/// @title NFTMinter
+/// @title SuaveNFT
 /// @notice Contract to mint ERC-721 tokens with a signed EIP-712 message
 contract SuaveNFT is ERC721 {
     // Event declarations
