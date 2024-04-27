@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"log"
 	"math/big"
-	"unicode/utf8"
+	"os"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -24,7 +26,7 @@ const (
 	NFTEETokenID = 1
 )
 
-func generateNFT(cfg *framework.Config, privKey *framework.PrivKey, chatNft *framework.Contract) *types.Receipt {
+func generateNFT(cfg *framework.Config, privKey *framework.PrivKey, chatNft *framework.Contract, userPrompts []string) *types.Receipt {
 	var (
 		mintParamsType, _ = abi.NewType("tuple", "MintNFTConfidentialParams", []abi.ArgumentMarshaling{
 			{Name: "privateKey", Type: "string"},
@@ -46,7 +48,7 @@ func generateNFT(cfg *framework.Config, privKey *framework.PrivKey, chatNft *fra
 	}{
 		common.Bytes2Hex(privKey.MarshalPrivKey()), // privateKey
 		privKey.Address(),                          // recipient
-		[]string{"What is the meaning of life?"},   // prompts
+		userPrompts,                                // prompts
 		cfg.OpenAIKey,                              // openaiKey
 	}
 	log.Printf("Prompt: %s\n", confidentialInputs.Prompts)
@@ -59,9 +61,12 @@ func generateNFT(cfg *framework.Config, privKey *framework.PrivKey, chatNft *fra
 	return receipt
 }
 
+// QueryResult is an event which contains the result of a ChatGPT query on the ChatNFT contract.
 type QueryResult struct {
 	Result hexutil.Bytes `json:"result"`
 }
+
+// NftCreated is the event emitted when an NFT is created.
 type NftCreated struct {
 	TokenID   *big.Int        `json:"tokenId"`
 	Recipient *common.Address `json:"recipient"`
@@ -158,6 +163,25 @@ func mintNFTWithSignature(contractAddress common.Address, tokenID *big.Int, reci
 	return receipt, nil
 }
 
+func gatherUserPrompts(reader *bufio.Reader) []string {
+	var prompts []string
+
+	for {
+		if len(prompts) > 0 {
+			fmt.Print("Enter another prompt, or leave empty to finish: ")
+		} else {
+			fmt.Print("Enter a prompt: ")
+		}
+
+		input, err := reader.ReadString('\n')
+		if err != nil || len(input) == 1 {
+			break
+		}
+		prompts = append(prompts, input)
+	}
+	return prompts
+}
+
 func main() {
 	var cfg framework.Config
 	if err := envconfig.Process(context.Background(), &cfg); err != nil {
@@ -165,6 +189,23 @@ func main() {
 	}
 	fr := framework.New(framework.WithL1())
 	ethClient := fr.L1.RPC()
+
+	// ask user for prompts to feed to ChatGPT
+	reader := bufio.NewReader(os.Stdin)
+	userPrompts := gatherUserPrompts(reader)
+	fmt.Println("Prompts:")
+	for _, prompt := range userPrompts {
+		fmt.Printf("  %s", prompt)
+	}
+	fmt.Printf("Continue making an NFT with these prompts? (Y/n): ")
+	doContinue, err := reader.ReadString('\n')
+	if err != nil || strings.ToLower(doContinue)[0] == 'n' {
+		log.Fatalln("Exiting...")
+	}
+	for i, prompt := range userPrompts {
+		// trim newline character
+		userPrompts[i] = prompt[:len(prompt)-1]
+	}
 
 	// create private key to be used on SUAVE and Eth L1
 	privKey := cfg.FundedAccountL1
@@ -185,7 +226,7 @@ func main() {
 	log.Printf("NFTEE deployed on L1 (%s): %s\n", nfteeTxHash.Hex(), nfteeAddress.Hex())
 
 	// Create NFT on SUAVE (sign a message to approve a mint on L1)
-	receipt := generateNFT(&cfg, privKey, chatNft)
+	receipt := generateNFT(&cfg, privKey, chatNft, userPrompts)
 	queryResult, nftCreated := parseNFTLogs(chatNft, receipt)
 	log.Printf("QueryResult: %s\n", queryResult.Result.String())
 	log.Printf("tokenId: %s\n", nftCreated.TokenID)
@@ -194,11 +235,6 @@ func main() {
 	decodedResult, err := hexutil.Decode(queryResult.Result.String())
 	if err != nil {
 		log.Fatalf("Failed to decode QueryResult: %v", err)
-	}
-	if utf8.Valid(decodedResult) {
-		log.Printf("QueryResult decoded: %s\n", string(decodedResult))
-	} else {
-		log.Printf("(invalid utf8) QueryResult decoded: %s\n", decodedResult)
 	}
 
 	// Mint NFT on L1 Ethereum
@@ -209,8 +245,7 @@ func main() {
 	if receipt.Status == types.ReceiptStatusSuccessful {
 		log.Println("NFT minted successfully!")
 	} else {
-		log.Fatalf("Failed to mint NFT")
-		return
+		log.Fatalln("Failed to mint NFT")
 	}
 
 	// call tokenURI method to check our NFT
@@ -219,5 +254,7 @@ func main() {
 	contract.Call(&bind.CallOpts{
 		Context: context.Background(),
 	}, &tokenURI, "tokenURI", nftCreated.TokenID)
-	log.Printf("TokenURI: %v\n", tokenURI)
+	tokenData := tokenURI[0]
+	tokenData = strings.ReplaceAll(tokenData.(string), "\\n", "\n")
+	log.Printf("Token data:\n%s", tokenData)
 }
