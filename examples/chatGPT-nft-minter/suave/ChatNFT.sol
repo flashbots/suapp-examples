@@ -55,9 +55,9 @@ contract ChatNFT {
         string memory queryResult = chatGPT.complete(messages);
 
         // for signing NFT-minting approvals
-        Emitter emitter = new Emitter();
+        // Emitter emitter = new Emitter();
         bytes memory signature =
-            emitter.signMintApproval(tokenId, cParams.recipient, string(queryResult), cParams.privateKey);
+            Emitter.signMintApproval(tokenId, cParams.recipient, string(queryResult), cParams.privateKey);
 
         // Callback emits the query result.
         suaveCalldata =

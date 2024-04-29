@@ -3,14 +3,20 @@ pragma solidity ^0.8.13;
 
 import "suave-std/suavelib/Suave.sol";
 
-contract Emitter {
+library Emitter {
     // Constants matching those in SuaveNFT
     string public constant NAME = "SUAVE_NFT2";
     string public constant SYMBOL = "NFTEE";
     bytes32 public constant MINT_TYPEHASH = 0x686aa0ee2a8dd75ace6f66b3a5e79d3dfd8e25e05a5e494bb85e72214ab37880;
     bytes32 public constant DOMAIN_SEPARATOR = 0x07c5db21fddca4952bc7dee96ea945c5702afed160b9697111b37b16b1289b89;
 
-    function mintDigest(uint256 tokenId, address recipient, string memory content) public pure returns (bytes memory) {
+    event NFTEEApproval(bytes signedMessage);
+
+    function mintDigest(uint256 tokenId, address recipient, string memory content)
+        internal
+        pure
+        returns (bytes memory)
+    {
         bytes32 structHash = keccak256(
             abi.encode(
                 MINT_TYPEHASH,
@@ -26,15 +32,13 @@ contract Emitter {
         return abi.encodePacked(digestHash);
     }
 
-    event NFTEEApproval(bytes signedMessage);
-
-    function emitSignedMintApproval(bytes memory message) public {
+    function emitSignedMintApproval(bytes memory message) internal {
         emit NFTEEApproval(message);
     }
 
     /// Returns signature of the mint approval.
     function signMintApproval(uint256 tokenId, address recipient, string memory content, bytes memory signerPrivateKey)
-        public
+        internal
         returns (bytes memory signature)
     {
         bytes memory _digest = mintDigest(tokenId, recipient, content);
