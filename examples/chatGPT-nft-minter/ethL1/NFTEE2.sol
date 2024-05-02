@@ -6,6 +6,8 @@ import {ERC721} from "solmate/tokens/ERC721.sol";
 /// @title SuaveNFT
 /// @notice Contract to mint ERC-721 tokens with a signed EIP-712 message
 contract SuaveNFT is ERC721 {
+    string private constant BASE_URI = "http://localhost:8080/nftData/";
+
     // Event declarations
     event NFTMintedEvent(address indexed recipient, uint256 indexed tokenId);
 
@@ -21,7 +23,7 @@ contract SuaveNFT is ERC721 {
     address public authorizedSigner;
 
     // token data
-    mapping(uint256 => string) private _tokenDatas;
+    mapping(uint256 => string) public tokenData;
 
     // NFT Details
     string public constant NAME = "SUAVE_NFT2";
@@ -43,7 +45,7 @@ contract SuaveNFT is ERC721 {
         require(verifyEIP712Signature(tokenId, recipient, content, v, r, s), "INVALID_SIGNATURE");
 
         _safeMint(recipient, tokenId);
-        _tokenDatas[tokenId] = content;
+        tokenData[tokenId] = content;
 
         emit NFTMintedEvent(recipient, tokenId);
     }
@@ -79,14 +81,13 @@ contract SuaveNFT is ERC721 {
     }
 
     function _exists(uint256 tokenId) internal view returns (bool) {
-        return keccak256(bytes(_tokenDatas[tokenId])) != keccak256("");
+        return keccak256(bytes(tokenData[tokenId])) != keccak256("");
     }
 
     /// Hijack `tokenURI` function to comply w/ ERC721 standard,
     /// but we're just using it to hold string data for NFTs.
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
-        string memory _tokenData = _tokenDatas[tokenId];
-        return _tokenData;
+        return string(abi.encodePacked(BASE_URI, tokenId));
     }
 }
