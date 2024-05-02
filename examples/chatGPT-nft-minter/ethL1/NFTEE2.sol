@@ -2,10 +2,13 @@
 pragma solidity ^0.8.19;
 
 import {ERC721} from "solmate/tokens/ERC721.sol";
+import {LibString} from "solmate/utils/LibString.sol";
 
 /// @title SuaveNFT
 /// @notice Contract to mint ERC-721 tokens with a signed EIP-712 message
 contract SuaveNFT is ERC721 {
+    using LibString for uint256;
+
     string private constant BASE_URI = "http://localhost:8080/nftData/";
 
     // Event declarations
@@ -88,6 +91,6 @@ contract SuaveNFT is ERC721 {
     /// but we're just using it to hold string data for NFTs.
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
-        return string(abi.encodePacked(BASE_URI, tokenId));
+        return string(abi.encodePacked(BASE_URI, tokenId.toString()));
     }
 }
