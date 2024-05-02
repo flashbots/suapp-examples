@@ -56,7 +56,7 @@ contract SuaveNFT is ERC721 {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) internal view returns (bool) {
+    ) public view returns (bool) {
         bytes32 digestHash = keccak256(
             abi.encodePacked(
                 "\x19\x01",
