@@ -223,13 +223,19 @@ func main() {
 		log.Fatalln("Failed to mint NFT")
 	}
 
-	// call tokenURI method to check our NFT
+	// call tokenData method to view our NFT
 	contract := bind.NewBoundContract(nfteeAddress, *nfteeArtifact.Abi, ethClient, ethClient, ethClient)
+	var tokenData []interface{}
+	contract.Call(&bind.CallOpts{
+		Context: context.Background(),
+	}, &tokenData, "tokenData", nftCreated.TokenID)
 	var tokenURI []interface{}
 	contract.Call(&bind.CallOpts{
 		Context: context.Background(),
 	}, &tokenURI, "tokenURI", nftCreated.TokenID)
-	tokenData := tokenURI[0]
-	tokenData = strings.ReplaceAll(tokenData.(string), "\\n", "\n")
-	log.Printf("Token data:\n%s", tokenData)
+	nftData := tokenData[0].(string)
+	nftData = strings.ReplaceAll(nftData, "\\\\", "\\")
+	nftData = strings.ReplaceAll(nftData, "\\n", "\n")
+	log.Printf("Token uri: %s", tokenURI...)
+	log.Printf("Token data:\n%s", nftData)
 }
