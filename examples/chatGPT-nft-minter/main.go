@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"log"
 	"math/big"
-	"os"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -147,6 +145,7 @@ func mintNFTWithSignature(contractAddress common.Address, tokenID *big.Int, reci
 	if err != nil {
 		return nil, fmt.Errorf("mintNFTWithSignature transaction failed: %v", err)
 	}
+	log.Printf("Mint transaction sent: data=%s", hexutil.Encode(tx.Data()))
 
 	// Wait for the transaction to be included
 	log.Println("Waiting for mint transaction to be included...")
@@ -163,25 +162,6 @@ func mintNFTWithSignature(contractAddress common.Address, tokenID *big.Int, reci
 	return receipt, nil
 }
 
-func gatherUserPrompts(reader *bufio.Reader) []string {
-	var prompts []string
-
-	for {
-		if len(prompts) > 0 {
-			fmt.Print("Enter another prompt, or leave empty to finish: ")
-		} else {
-			fmt.Print("Enter a prompt: ")
-		}
-
-		input, err := reader.ReadString('\n')
-		if err != nil || len(input) == 1 {
-			break
-		}
-		prompts = append(prompts, input)
-	}
-	return prompts
-}
-
 func main() {
 	var cfg framework.Config
 	if err := envconfig.Process(context.Background(), &cfg); err != nil {
@@ -190,21 +170,15 @@ func main() {
 	fr := framework.New(framework.WithL1())
 	ethClient := fr.L1.RPC()
 
+	log.Printf("Kettle address: %s", fr.KettleAddress)
+
 	// ask user for prompts to feed to ChatGPT
-	reader := bufio.NewReader(os.Stdin)
-	userPrompts := gatherUserPrompts(reader)
+	userPrompts := []string{
+		"Render a cat in ASCII art. Return only the result without any other text.",
+	}
 	fmt.Println("Prompts:")
 	for _, prompt := range userPrompts {
-		fmt.Printf("  %s", prompt)
-	}
-	fmt.Printf("Continue making an NFT with these prompts? (Y/n): ")
-	doContinue, err := reader.ReadString('\n')
-	if err != nil || strings.ToLower(doContinue)[0] == 'n' {
-		log.Fatalln("Exiting...")
-	}
-	for i, prompt := range userPrompts {
-		// trim newline character
-		userPrompts[i] = prompt[:len(prompt)-1]
+		fmt.Printf("  %s\n", prompt)
 	}
 
 	// create private key to be used on SUAVE and Eth L1
@@ -238,6 +212,7 @@ func main() {
 	}
 
 	// Mint NFT on L1 Ethereum
+	log.Printf("content: %s", string(decodedResult))
 	receipt, err = mintNFTWithSignature(nfteeAddress, nftCreated.TokenID, *nftCreated.Recipient, string(decodedResult), nftCreated.Signature, ethClient, auth, nfteeArtifact.Abi)
 	if err != nil {
 		log.Fatalf("Failed to mint NFT: %v", err)
