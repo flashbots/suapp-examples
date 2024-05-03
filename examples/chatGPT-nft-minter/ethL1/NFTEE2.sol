@@ -9,7 +9,7 @@ import {LibString} from "solmate/utils/LibString.sol";
 contract SuaveNFT is ERC721 {
     using LibString for uint256;
 
-    string private constant BASE_URI = "http://localhost:8080/nftData/";
+    string private constant BASE_URI = "http://localhost:8080/metadata/";
 
     // Event declarations
     event NFTMintedEvent(address indexed recipient, uint256 indexed tokenId);
