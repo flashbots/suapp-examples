@@ -93,14 +93,14 @@ func parseNFTLogs(chatNft *framework.Contract, receipt *types.Receipt) (*QueryRe
 	return queryResult, nftCreated
 }
 
-func deployEthNFTEE(ethClient *ethclient.Client, signerAddr common.Address, auth *bind.TransactOpts) (common.Address, common.Hash, *framework.Artifact) {
+func deployEthNFTEE(ethClient *ethclient.Client, signerAddr common.Address, auth *bind.TransactOpts, baseURI string) (common.Address, common.Hash, *framework.Artifact) {
 	artifact, err := framework.ReadArtifact("NFTEE2.sol/SuaveNFT.json")
 	if err != nil {
 		panic(err)
 	}
 
 	// Deploy contract with signer address as a constructor argument
-	_, tx, _, err := bind.DeployContract(auth, *artifact.Abi, artifact.Code, ethClient, signerAddr)
+	_, tx, _, err := bind.DeployContract(auth, *artifact.Abi, artifact.Code, ethClient, baseURI)
 	if err != nil {
 		log.Fatalf("Failed to deploy new contract: %v", err)
 	}
@@ -196,7 +196,7 @@ func main() {
 	log.Printf("ChatNFT deployed on SUAVE (address=%s)", chatNft.Raw().Address())
 
 	// Deploy Ethereum L1 Contract
-	nfteeAddress, nfteeTxHash, nfteeArtifact := deployEthNFTEE(ethClient, privKey.Address(), auth)
+	nfteeAddress, nfteeTxHash, nfteeArtifact := deployEthNFTEE(ethClient, privKey.Address(), auth, cfg.NfteeBaseURI)
 	log.Printf("NFTEE deployed on L1 (%s): %s\n", nfteeTxHash.Hex(), nfteeAddress.Hex())
 
 	// Create NFT on SUAVE (sign a message to approve a mint on L1)

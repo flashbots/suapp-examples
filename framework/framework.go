@@ -201,6 +201,9 @@ type Config struct {
 
 	// OpenAI API key
 	OpenAIKey string `env:"OPENAI_KEY"`
+
+	NfteeBaseURI string `env:"NFTEE_BASE_URI, default=http://localhost:8080/metadata/"`
+	// TODO: change this =============================>^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ to a public IPFS node
 }
 
 type ConfigOption func(c *Config)

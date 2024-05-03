@@ -9,7 +9,8 @@ import {LibString} from "solmate/utils/LibString.sol";
 contract SuaveNFT is ERC721 {
     using LibString for uint256;
 
-    string private constant BASE_URI = "http://localhost:8080/metadata/";
+    // string private constant BASE_URI = "http://localhost:8080/metadata/";
+    string private baseUri;
 
     // Event declarations
     event NFTMintedEvent(address indexed recipient, uint256 indexed tokenId);
@@ -22,9 +23,6 @@ contract SuaveNFT is ERC721 {
     // keccak256("Mint(string name,string symbol,uint256 tokenId,address recipient)");
     bytes32 public constant MINT_TYPEHASH = 0x686aa0ee2a8dd75ace6f66b3a5e79d3dfd8e25e05a5e494bb85e72214ab37880;
 
-    // Authorized signer's address
-    address public authorizedSigner;
-
     // token data
     mapping(uint256 => string) public tokenData;
 
@@ -32,8 +30,8 @@ contract SuaveNFT is ERC721 {
     string public constant NAME = "SUAVE_NFT2";
     string public constant SYMBOL = "NFTEE";
 
-    constructor(address _authorizedSigner) ERC721(NAME, SYMBOL) {
-        authorizedSigner = _authorizedSigner;
+    constructor(string memory _baseUri) ERC721(NAME, SYMBOL) {
+        baseUri = _baseUri;
     }
 
     // Mint NFT with a signed EIP-712 message
@@ -80,7 +78,7 @@ contract SuaveNFT is ERC721 {
         );
 
         address recovered = ecrecover(digestHash, v, r, s);
-        return recovered == authorizedSigner;
+        return recovered == recipient;
     }
 
     function _exists(uint256 tokenId) internal view returns (bool) {
@@ -91,6 +89,6 @@ contract SuaveNFT is ERC721 {
     /// but we're just using it to hold string data for NFTs.
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
-        return string(abi.encodePacked(BASE_URI, tokenId.toString()));
+        return string(abi.encodePacked(baseUri, tokenId.toString()));
     }
 }
