@@ -198,6 +198,42 @@ func (c *Contract) SendConfidentialRequest(method string, args []interface{}, co
 	return receipt
 }
 
+func (c *Contract) MaybeSendConfidentialRequest(method string, args []interface{}, confidentialBytes []byte) (*types.Receipt, error) {
+	txnResult, err := c.contract.SendTransaction(method, args, confidentialBytes)
+	if err != nil {
+		// decode the PeekerReverted error
+		errMsg := err.Error()
+		if strings.HasPrefix(errMsg, executionRevertedPrefix) {
+			errMsg = errMsg[len(executionRevertedPrefix):]
+			errMsgBytes, _ := hex.DecodeString(errMsg)
+
+			unpacked, _ := artifacts.SuaveAbi.Errors["PeekerReverted"].Inputs.Unpack(errMsgBytes[4:])
+
+			addr, _ := unpacked[0].(common.Address)
+			eventErr, _ := unpacked[1].([]byte)
+			return nil, fmt.Errorf("peeker 0x%x reverted: %s", addr, eventErr)
+		} else if strings.HasSuffix(errMsg, "10]'") { // ascii decimal array
+			// split "byte array" from error string
+			errChunks := strings.SplitAfter(errMsg, "[")
+			callErr := errChunks[0][:len(errChunks[0])-1]                         // removes "[" at the end
+			internalErr := parseASCIIDecimals(errChunks[1][:len(errChunks[1])-2]) // removes "']" at the end
+			return nil, fmt.Errorf("%s%s", callErr, string(*internalErr))
+		}
+		return nil, err
+	}
+
+	log.Printf("transaction hash: %s", txnResult.Hash().Hex())
+
+	receipt, err := txnResult.Wait()
+	if err != nil {
+		return nil, err
+	}
+	if receipt.Status == 0 {
+		return nil, fmt.Errorf("receipt status: failed")
+	}
+	return receipt, nil
+}
+
 type Framework struct {
 	config        *Config
 	KettleAddress common.Address

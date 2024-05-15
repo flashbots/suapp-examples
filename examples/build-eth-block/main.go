@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"log"
 	"math/big"
+	"strings"
 	"time"
 
-	"github.com/attestantio/go-eth2-client/api"
+	eth2 "github.com/attestantio/go-eth2-client"
+	v1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -16,9 +18,7 @@ import (
 
 var buildEthBlockAddress = common.HexToAddress("0x42100001")
 
-func main() {
-	fr := framework.New(framework.WithL1())
-
+func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributesEvent) {
 	testAddr1 := framework.GeneratePrivKey()
 	log.Printf("Test address 1: %s", testAddr1.Address().Hex())
 
@@ -50,10 +50,11 @@ func main() {
 		"https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net",
 	)
 
-	targetBlock := currentL1Block(fr)
+	targetBlock := payloadAttributes.Data.ParentBlockNumber + 1
+	targetSlot := payloadAttributes.Data.ProposalSlot
 
 	{ // Send a bundle to the builder
-		decryptionCondition := targetBlock.NumberU64() + 1
+		decryptionCondition := targetBlock
 		allowedPeekers := []common.Address{
 			buildEthBlockAddress,
 			bundleContract.Raw().Address(),
@@ -83,21 +84,10 @@ func main() {
 	execHeaderJSON, err := execBlock.Header().MarshalJSON()
 	maybe(err)
 	log.Printf("execBlock header: %s", string(execHeaderJSON))
-	beaconRes, err := fr.L1Beacon.BeaconBlockHeader(
-		context.Background(),
-		&api.BeaconBlockHeaderOpts{
-			Block: "head",
-		},
-	)
-	log.Printf("beaconRes: %v", beaconRes)
-	maybe(err)
-	beaconHeader := beaconRes.Data.Header
-	targetSlot := beaconHeader.Message.Slot + 1
-	beaconRoot := beaconRes.Data.Root
 
 	validators, err := fr.L1Relay.GetValidators()
-	var slotDuty framework.BuilderGetValidatorsResponseEntry
 	maybe(err)
+	var slotDuty framework.BuilderGetValidatorsResponseEntry
 	for _, validator := range *validators {
 		if validator.Slot == uint64(targetSlot) {
 			slotDuty = validator
@@ -106,21 +96,35 @@ func main() {
 		}
 	}
 
-	// decode BLS pubkey to Ethereum address
 	proposerPubkey, err := slotDuty.Entry.Message.Pubkey.MarshalJSON()
 	maybe(err)
+
+	// map payloadAttributes.Data.V3.Withdrawals to types.Withdrawals
+	withdrawals := make([]*types.Withdrawal, len(payloadAttributes.Data.V3.Withdrawals))
+	for i, withdrawal := range payloadAttributes.Data.V3.Withdrawals {
+		withdrawals[i] = &types.Withdrawal{
+			Index:     uint64(withdrawal.Index),
+			Validator: uint64(withdrawal.ValidatorIndex),
+			Address:   common.Address(withdrawal.Address),
+			Amount:    uint64(withdrawal.Amount),
+		}
+	}
+
 	blockArgs := types.BuildBlockArgs{
-		ProposerPubkey: proposerPubkey,
-		Timestamp:      getNewSlotTimestamp(uint64(targetSlot)),
-		FeeRecipient:   common.Address(slotDuty.Entry.Message.FeeRecipient),
-		Parent:         execBlock.Hash(),
 		Slot:           uint64(targetSlot),
-		BeaconRoot:     common.Hash(beaconRoot),
+		Parent:         common.Hash(payloadAttributes.Data.ParentBlockHash),
+		Timestamp:      payloadAttributes.Data.V3.Timestamp,
+		Random:         payloadAttributes.Data.V3.PrevRandao,
+		FeeRecipient:   common.Address(slotDuty.Entry.Message.FeeRecipient),
+		GasLimit:       uint64(slotDuty.Entry.Message.GasLimit),
+		ProposerPubkey: proposerPubkey,
+		BeaconRoot:     common.Hash(payloadAttributes.Data.ParentBlockRoot),
+		Withdrawals:    withdrawals,
 	}
 
 	{ // Signal to the builder that it's time to build a new block
 		startTime := time.Now().UnixMilli()
-		receipt := ethBlockContract.SendConfidentialRequest("buildFromPool", []any{blockArgs, targetBlock.NumberU64() + 1}, nil)
+		receipt := ethBlockContract.SendConfidentialRequest("buildFromPool", []any{blockArgs, targetBlock}, nil)
 		maybe(err)
 
 		duration := time.Now().UnixMilli() - startTime
@@ -135,23 +139,30 @@ func main() {
 				break
 			}
 		}
-		log.Printf("finished buildFromPool")
 	}
 
 	{ // Submit block to the relay
 		log.Printf("blockBidID: %s", hexutil.Encode(blockBidID[:]))
-		pre := uint64(1)
-		for uint64(time.Now().Unix()) < blockArgs.Timestamp-pre {
-			log.Printf("waiting for block. T-%d seconds...", blockArgs.Timestamp-pre-uint64(time.Now().Unix()))
-			time.Sleep(1 * time.Second)
-		}
 
 		startTime := time.Now().UnixMilli()
-		receipt := ethBlockContract.SendConfidentialRequest("submitToRelay", []any{
-			blockArgs,
-			blockBidID,
-			"",
-		}, nil)
+		var receipt *types.Receipt
+		for {
+			receipt, err = ethBlockContract.MaybeSendConfidentialRequest("submitToRelay", []any{
+				blockArgs,
+				blockBidID,
+				"",
+			}, nil)
+			if err == nil {
+				break
+			} else {
+				log.Printf("submitToRelay error: %s. retrying in 3 seconds...", err.Error())
+				if strings.Contains(err.Error(), "payload attributes not (yet) known") {
+					time.Sleep(3 * time.Second)
+				} else {
+					panic(err)
+				}
+			}
+		}
 
 		duration := time.Now().UnixMilli() - startTime
 		log.Printf("finished submitToRelay in %d ms", duration)
@@ -165,15 +176,22 @@ func main() {
 	}
 }
 
-// Calculate the timestamp for a new slot.
-func getNewSlotTimestamp(targetSlot uint64) uint64 {
-	return 1712816195 + (targetSlot-8832681)*12
-} // lol
+func main() {
+	fr := framework.New(framework.WithL1())
 
-func currentL1Block(fr *framework.Framework) *types.Block {
-	b, err := fr.L1.RPC().BlockByNumber(context.Background(), nil)
+	eventProvider := eth2.EventsProvider(fr.L1Beacon)
+
+	// subscribe to the beacon chain event `payload_attributes`
+	err := eventProvider.Events(context.Background(), []string{"payload_attributes"}, func(e *v1.Event) {
+		log.Printf("payload_attributes received: %v", e)
+		payloadAttributes := e.Data.(*v1.PayloadAttributesEvent)
+
+		buildBlock(fr, payloadAttributes)
+	})
 	maybe(err)
-	return b
+
+	// wait forever
+	select {}
 }
 
 func maybe(err error) {

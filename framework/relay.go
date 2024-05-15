@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	builderApiV1 "github.com/attestantio/go-builder-client/api/v1"
@@ -51,12 +50,9 @@ func (b *RelayClient) getAndParse(url string, v any) error {
 // GetValidators gets current & upcoming validators from the mev-boost relay.
 func (b *RelayClient) GetValidators() (*[]BuilderGetValidatorsResponseEntry, error) {
 	url := fmt.Sprintf("%s/relay/v1/builder/validators", b.relayURL)
-	log.Printf("url: %s", url)
-
 	data := new([]BuilderGetValidatorsResponseEntry)
 	if err := b.getAndParse(url, data); err != nil {
 		return nil, err
 	}
-
 	return data, nil
 }
