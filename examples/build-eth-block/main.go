@@ -18,7 +18,7 @@ import (
 
 var buildEthBlockAddress = common.HexToAddress("0x42100001")
 
-func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributesEvent) {
+func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributesEvent) bool {
 	testAddr1 := framework.GeneratePrivKey()
 	log.Printf("Test address 1: %s", testAddr1.Address().Hex())
 
@@ -51,7 +51,6 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 	)
 
 	targetBlock := payloadAttributes.Data.ParentBlockNumber + 1
-	targetSlot := payloadAttributes.Data.ProposalSlot
 
 	{ // Send a bundle to the builder
 		decryptionCondition := targetBlock
@@ -89,15 +88,16 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 	maybe(err)
 	var slotDuty framework.BuilderGetValidatorsResponseEntry
 	for _, validator := range *validators {
-		if validator.Slot == uint64(targetSlot) {
+		if validator.Slot == uint64(payloadAttributes.Data.ProposalSlot) {
 			slotDuty = validator
-			log.Printf("found proposer duty for slot %d, %v", targetSlot, slotDuty)
+			log.Printf("found proposer duty for slot %d, %v", payloadAttributes.Data.ProposalSlot, slotDuty)
 			break
 		}
 	}
-
-	proposerPubkey, err := slotDuty.Entry.Message.Pubkey.MarshalJSON()
-	maybe(err)
+	if slotDuty.Entry == nil {
+		log.Printf("no proposer duty found for slot %d", payloadAttributes.Data.ProposalSlot)
+		return false
+	}
 
 	// map payloadAttributes.Data.V3.Withdrawals to types.Withdrawals
 	withdrawals := make([]*types.Withdrawal, len(payloadAttributes.Data.V3.Withdrawals))
@@ -111,13 +111,13 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 	}
 
 	blockArgs := types.BuildBlockArgs{
-		Slot:           uint64(targetSlot),
+		Slot:           uint64(payloadAttributes.Data.ProposalSlot),
 		Parent:         common.Hash(payloadAttributes.Data.ParentBlockHash),
 		Timestamp:      payloadAttributes.Data.V3.Timestamp,
 		Random:         payloadAttributes.Data.V3.PrevRandao,
 		FeeRecipient:   common.Address(slotDuty.Entry.Message.FeeRecipient),
 		GasLimit:       uint64(slotDuty.Entry.Message.GasLimit),
-		ProposerPubkey: proposerPubkey,
+		ProposerPubkey: slotDuty.Entry.Message.Pubkey[:],
 		BeaconRoot:     common.Hash(payloadAttributes.Data.ParentBlockRoot),
 		Withdrawals:    withdrawals,
 	}
@@ -155,8 +155,8 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 			if err == nil {
 				break
 			} else {
-				log.Printf("submitToRelay error: %s. retrying in 3 seconds...", err.Error())
 				if strings.Contains(err.Error(), "payload attributes not (yet) known") {
+					log.Printf("submitToRelay error: %s. retrying in 3 seconds...", err.Error())
 					time.Sleep(3 * time.Second)
 				} else {
 					panic(err)
@@ -174,24 +174,31 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 			}
 		}
 	}
+	return true
 }
 
 func main() {
 	fr := framework.New(framework.WithL1())
-
 	eventProvider := eth2.EventsProvider(fr.L1Beacon)
+	done := make(chan bool)
 
 	// subscribe to the beacon chain event `payload_attributes`
 	err := eventProvider.Events(context.Background(), []string{"payload_attributes"}, func(e *v1.Event) {
-		log.Printf("payload_attributes received: %v", e)
 		payloadAttributes := e.Data.(*v1.PayloadAttributesEvent)
-
-		buildBlock(fr, payloadAttributes)
+		bbRes := buildBlock(fr, payloadAttributes)
+		if bbRes {
+			done <- true
+		}
 	})
 	maybe(err)
 
-	// wait forever
-	select {}
+	// wait for exit conditions
+	select {
+	case <-done:
+		log.Printf("block sent to relay successfully")
+	case <-time.After(30 * time.Second):
+		log.Fatalf("timeout")
+	}
 }
 
 func maybe(err error) {
