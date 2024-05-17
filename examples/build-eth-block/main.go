@@ -77,12 +77,7 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 	}
 
 	var blockBidID [16]byte
-	// get latest blocks (exec & beacon) from live chain
-	execBlock, err := fr.L1.RPC().BlockByNumber(context.Background(), nil)
-	maybe(err)
-	execHeaderJSON, err := execBlock.Header().MarshalJSON()
-	maybe(err)
-	log.Printf("execBlock header: %s", string(execHeaderJSON))
+	log.Printf("blockBidID: %s", hexutil.Encode(blockBidID[:]))
 
 	validators, err := fr.L1Relay.GetValidators()
 	maybe(err)
@@ -99,7 +94,6 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 		return false
 	}
 
-	// map payloadAttributes.Data.V3.Withdrawals to types.Withdrawals
 	withdrawals := make([]*types.Withdrawal, len(payloadAttributes.Data.V3.Withdrawals))
 	for i, withdrawal := range payloadAttributes.Data.V3.Withdrawals {
 		withdrawals[i] = &types.Withdrawal{
@@ -142,8 +136,6 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 	}
 
 	{ // Submit block to the relay
-		log.Printf("blockBidID: %s", hexutil.Encode(blockBidID[:]))
-
 		startTime := time.Now().UnixMilli()
 		var receipt *types.Receipt
 		for {
@@ -167,7 +159,6 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 		duration := time.Now().UnixMilli() - startTime
 		log.Printf("finished submitToRelay in %d ms", duration)
 
-		// get logs from ccr
 		for _, receiptLog := range receipt.Logs {
 			if receiptLog.Topics[0] == ethBlockContract.Abi.Events["SubmitBlockResponse"].ID {
 				log.Printf("SubmitBlockResponse: %s", receiptLog.Data)
