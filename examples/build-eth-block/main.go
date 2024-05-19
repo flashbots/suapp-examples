@@ -77,7 +77,6 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 	}
 
 	var blockBidID [16]byte
-	log.Printf("blockBidID: %s", hexutil.Encode(blockBidID[:]))
 
 	validators, err := fr.L1Relay.GetValidators()
 	maybe(err)
@@ -130,6 +129,7 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 				bids, err := buildEvent.Inputs.Unpack(receiptLog.Data)
 				maybe(err)
 				blockBidID = bids[0].([16]byte)
+				log.Printf("blockBidID: %s", hexutil.Encode(blockBidID[:]))
 				break
 			}
 		}
