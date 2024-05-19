@@ -83,7 +83,7 @@ Expected output:
 
 The block submitted won't be considered for inclusion because the transactions used to build the block in this demo aren't valid on mainnet. However, those transactions could easily be replaced with real transactions in another SUAPP.
 
-You may encounter an error `payload attributes not (yet) found`. This is common, and typically results from the beacon node being out of sync. Running the demo again often works. If it doesn't, you may need to check your node.
+⚠️ You may encounter an error `payload attributes not (yet) found`. This is common, and typically results from the beacon node being out of sync. Running the demo again often works. If it doesn't, you may need to check your node.
 
 The `/eth/v1/node/syncing` endpoint is helpful in diagnosing this issue:
 
@@ -91,7 +91,7 @@ The `/eth/v1/node/syncing` endpoint is helpful in diagnosing this issue:
 curl $L1_BEACON_URL/eth/v1/node/syncing
 ```
 
-If your node is healthy, the response should look similar to this:
+If your node is healthy, the response should look like this:
 
 ```json
 {
@@ -99,7 +99,7 @@ If your node is healthy, the response should look similar to this:
         "is_syncing":false,
         "is_optimistic":false,
         "el_offline":false,
-        "head_slot":"9110162",
+        "head_slot":"9110069",
         "sync_distance":"0"
     }
 }
