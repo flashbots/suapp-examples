@@ -311,6 +311,9 @@ func New(opts ...ConfigOption) *Framework {
 			panic(err)
 		}
 		fr.L1Beacon = beaconClient.(*ethHttp.Service)
+		if fr.L1Beacon == nil {
+			panic("failed to create L1 beacon client")
+		}
 		fr.L1Relay = &RelayClient{
 			httpClient: http.DefaultClient,
 			relayURL:   config.L1RelayURL,

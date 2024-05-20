@@ -32,6 +32,7 @@ func GetAndParse[V interface{}](b *RelayClient, url string, v V) error {
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
