@@ -14,17 +14,19 @@ This example demonstrates a simple block building contract that receives bundles
 
 This demo requires *suave-geth* to be configured for mainnet. Currently, it's hard-coded for Holesky testnet.
 
-Check out this branch to reconfigure the node for mainnet:
+Check out this branch to reconfigure the node for mainnet and rebuild the binary:
 
 ```sh
 # in suave-geth/
 git checkout brock/mainnet-builder
+make suave
 ```
 
 Run suave-geth devnet with the following flags to ensure we connect to our own Ethereum provider, which we'll set up afterwards.
 
 ```sh
-suave-geth --suave.dev \
+# in suave-geth/
+./build/bin/suave-geth --suave.dev \
     --suave.eth.remote_endpoint=http://localhost:8555 \
     --suave.eth.external-whitelist='*'
 ```
