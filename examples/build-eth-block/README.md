@@ -9,6 +9,7 @@ This example demonstrates a simple block building contract that receives bundles
 - [foundry](https://getfoundry.sh/) (system installation)
 - [Golang](https://go.dev/doc/install) toolchain
 - [Rust](https://rustup.rs/) toolchain
+- ETH2 beacon RPC with access to `/eth/v1/events`
 
 ## Setup
 
@@ -31,9 +32,9 @@ Run suave-geth devnet with the following flags to ensure we connect to our own E
     --suave.eth.external-whitelist='*'
 ```
 
-This demo uses [suavex-anvil](https://github.com/flashbots/suavex-foundry)'s as the Ethereum provider for suave-geth, to replicate the conditions of building blocks for mainnet by forking a mainnet RPC provider.
+This demo uses [suavex-anvil](https://github.com/flashbots/suavex-foundry) as the Ethereum provider for suave-geth, to replicate the conditions of building blocks for mainnet by forking a mainnet RPC provider.
 
-Set `RPC_URL` (to a real mainnet RPC provider) in your environment, then run the following to download and run suavex-anvil.
+Set `RPC_URL` to a real mainnet RPC provider in your environment, then run the following to download and run suavex-anvil.
 
 ```sh
 git clone https://github.com/flashbots/suavex-foundry
