@@ -307,6 +307,9 @@ func New(opts ...ConfigOption) *Framework {
 		l1Clt := sdk.NewClient(l1RPC, config.FundedAccountL1.Priv, common.Address{})
 		fr.L1 = &Chain{rpc: l1RPC, clt: l1Clt}
 		beaconClient, err := ethHttp.New(context.Background(), ethHttp.WithAddress(config.L1BeaconURL))
+		if err != nil {
+			panic(err)
+		}
 		fr.L1Beacon = beaconClient.(*ethHttp.Service)
 		fr.L1Relay = &RelayClient{
 			httpClient: http.DefaultClient,
