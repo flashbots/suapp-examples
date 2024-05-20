@@ -171,14 +171,14 @@ func buildBlock(fr *framework.Framework, payloadAttributes *v1.PayloadAttributes
 func main() {
 	fr := framework.New(framework.WithL1())
 	eventProvider := eth2.EventsProvider(fr.L1Beacon)
-	done := make(chan bool)
+	done := make(chan struct{})
 
 	// subscribe to the beacon chain event `payload_attributes`
 	err := eventProvider.Events(context.Background(), []string{"payload_attributes"}, func(e *v1.Event) {
 		payloadAttributes := e.Data.(*v1.PayloadAttributesEvent)
 		bbRes := buildBlock(fr, payloadAttributes)
 		if bbRes {
-			done <- true
+			close(done)
 		}
 	})
 	maybe(err)
