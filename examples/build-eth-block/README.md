@@ -6,7 +6,7 @@ This example demonstrates a simple block building contract that receives bundles
 
 - [suave-geth](https://github.com/flashbots/suave-geth/tree/brock/mainnet-builder)
 - [suavex-foundry](https://github.com/flashbots/suavex-foundry)
-- [foundry](https://getfoundry.sh/) (system installation)
+- [foundry](https://getfoundry.sh/) (system installation to use `cast` and `forge`)
 - [Golang](https://go.dev/doc/install) toolchain
 - [Rust](https://rustup.rs/) toolchain
 - ETH2 beacon RPC with access to `/eth/v1/events`
@@ -15,7 +15,7 @@ This example demonstrates a simple block building contract that receives bundles
 
 This demo requires *suave-geth* to be configured for mainnet. Currently, it's hard-coded for Holesky testnet.
 
-Check out this branch to reconfigure the node for mainnet and rebuild the binary:
+In another terminal, checkout this branch to configure the node for mainnet and rebuild the binary:
 
 ```sh
 # in suave-geth/
@@ -34,7 +34,7 @@ Run suave-geth devnet with the following flags to ensure we connect to our own E
 
 This demo uses [suavex-anvil](https://github.com/flashbots/suavex-foundry) as the Ethereum provider for suave-geth, to replicate the conditions of building blocks for mainnet by forking a mainnet RPC provider.
 
-Set `RPC_URL` to a real mainnet RPC provider in your environment, then run the following to download and run suavex-anvil.
+In another terminal, set `RPC_URL` in your environment to a real mainnet RPC provider, then run the following to download and run suavex-anvil.
 
 ```sh
 git clone https://github.com/flashbots/suavex-foundry
@@ -53,9 +53,16 @@ cast send \
     0xb5feafbdd752ad52afb7e1bd2e40432a485bbb7f
 ```
 
+Now back in this repository, if you haven't already built the contracts, do so now:
+
+```sh
+# in suapp-examples/examples/build-eth-block/
+forge build
+```
+
 > For this demo, a mainnet beacon node with access to the `/eth/v1/events` endpoint is required. We use this to listen to the `payload_attributes` event, which gives us data we need to build blocks for mainnet.
 
-Now back in this codebase, set `L1_BEACON_URL` to your beacon node's RPC in .env (in the project root directory), or in your shell's environment, and run the deployment script:
+Set `L1_BEACON_URL` to your beacon node's RPC in .env (in the project root directory), or in your shell's environment, and run the deployment script:
 
 ```sh
 # in examples/build-eth-block/
