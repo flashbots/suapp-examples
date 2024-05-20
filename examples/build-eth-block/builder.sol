@@ -2,8 +2,9 @@
 pragma solidity ^0.8.8;
 
 import "suave-std/suavelib/Suave.sol";
+import {Suapp} from "suave-std/Suapp.sol";
 
-contract AnyBundleContract {
+contract AnyBundleContract is Suapp {
     event DataRecordEvent(Suave.DataId dataId, uint64 decryptionCondition, address[] allowedPeekers);
 
     function fetchConfidentialBundleData() public returns (bytes memory) {
@@ -179,23 +180,27 @@ contract EthBlockContract is AnyBundleContract {
 contract EthBlockBidSenderContract is EthBlockContract {
     string boostRelayUrl;
 
+    event SubmitBlockResponse(bytes, bytes);
+
     constructor(string memory boostRelayUrl_) {
         boostRelayUrl = boostRelayUrl_;
     }
 
-    function buildAndEmit(
-        Suave.BuildBlockArgs memory blockArgs,
-        uint64 blockHeight,
-        Suave.DataId[] memory dataRecords,
-        string memory namespace
-    ) public virtual override returns (bytes memory) {
+    function submitToRelay(Suave.BuildBlockArgs calldata blockArgs, Suave.DataId bidId, string calldata namespace)
+        public
+        emitOffchainLogs
+        returns (bytes memory)
+    {
         require(Suave.isConfidential());
 
-        (Suave.DataRecord memory blockDataRecord, bytes memory builderBid) =
-            this.doBuild(blockArgs, blockHeight, dataRecords, namespace);
-        Suave.submitEthBlockToRelay(boostRelayUrl, builderBid);
+        // bytes memory payload = this.unlock(bidId, hex"");
+        (bytes memory builderBid, bytes memory payload) = Suave.buildEthBlock(blockArgs, bidId, namespace);
+        bytes memory response = Suave.submitEthBlockToRelay(boostRelayUrl, builderBid);
 
-        emit DataRecordEvent(blockDataRecord.id, blockDataRecord.decryptionCondition, blockDataRecord.allowedPeekers);
-        return bytes.concat(this.emitDataRecord.selector, abi.encode(blockDataRecord));
+        return bytes.concat(this.emitBlockSubmissionResponse.selector, abi.encode(builderBid, response));
+    }
+
+    function emitBlockSubmissionResponse(bytes memory payload, bytes memory response) public {
+        emit SubmitBlockResponse(payload, response);
     }
 }

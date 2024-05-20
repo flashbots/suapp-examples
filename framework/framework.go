@@ -9,11 +9,14 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
+	ethHttp "github.com/attestantio/go-eth2-client/http"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -144,6 +147,20 @@ func (c *Contract) Raw() *sdk.Contract {
 
 var executionRevertedPrefix = "execution reverted: 0x"
 
+// parseASCIIDecimals parses an ASCII array string into a byte array.
+//
+//	parse("0 1 2 3") == []byte{0, 1, 2, 3}
+func parseASCIIDecimals(asciiArray string) *[]byte {
+	// parse "byte array" bytes (decimals) into actual byte array
+	decodedBytes := make([]byte, len(asciiArray))
+	decimalWords := strings.Split(asciiArray, " ")
+	for i := 0; i < len(decimalWords); i++ {
+		b, _ := strconv.ParseUint(decimalWords[i], 10, 8)
+		decodedBytes[i] = byte(b)
+	}
+	return &decodedBytes
+}
+
 // SendConfidentialRequest sends the confidential request to the kettle
 func (c *Contract) SendConfidentialRequest(method string, args []interface{}, confidentialBytes []byte) *types.Receipt {
 	txnResult, err := c.contract.SendTransaction(method, args, confidentialBytes)
@@ -159,6 +176,12 @@ func (c *Contract) SendConfidentialRequest(method string, args []interface{}, co
 			addr, _ := unpacked[0].(common.Address)
 			eventErr, _ := unpacked[1].([]byte)
 			panic(fmt.Sprintf("peeker 0x%x reverted: %s", addr, eventErr))
+		} else if strings.HasSuffix(errMsg, "10]'") { // ascii decimal array
+			// split "byte array" from error string
+			errChunks := strings.SplitAfter(errMsg, "[")
+			callErr := errChunks[0][:len(errChunks[0])-1]                         // removes "[" at the end
+			internalErr := parseASCIIDecimals(errChunks[1][:len(errChunks[1])-2]) // removes "']" at the end
+			panic(fmt.Sprintf("%s%s", callErr, string(*internalErr)))
 		}
 		panic(err)
 	}
@@ -175,12 +198,50 @@ func (c *Contract) SendConfidentialRequest(method string, args []interface{}, co
 	return receipt
 }
 
+func (c *Contract) MaybeSendConfidentialRequest(method string, args []interface{}, confidentialBytes []byte) (*types.Receipt, error) {
+	txnResult, err := c.contract.SendTransaction(method, args, confidentialBytes)
+	if err != nil {
+		// decode the PeekerReverted error
+		errMsg := err.Error()
+		if strings.HasPrefix(errMsg, executionRevertedPrefix) {
+			errMsg = errMsg[len(executionRevertedPrefix):]
+			errMsgBytes, _ := hex.DecodeString(errMsg)
+
+			unpacked, _ := artifacts.SuaveAbi.Errors["PeekerReverted"].Inputs.Unpack(errMsgBytes[4:])
+
+			addr, _ := unpacked[0].(common.Address)
+			eventErr, _ := unpacked[1].([]byte)
+			return nil, fmt.Errorf("peeker 0x%x reverted: %s", addr, eventErr)
+		} else if strings.HasSuffix(errMsg, "10]'") { // ascii decimal array
+			// split "byte array" from error string
+			errChunks := strings.SplitAfter(errMsg, "[")
+			callErr := errChunks[0][:len(errChunks[0])-1]                         // removes "[" at the end
+			internalErr := parseASCIIDecimals(errChunks[1][:len(errChunks[1])-2]) // removes "']" at the end
+			return nil, fmt.Errorf("%s%s", callErr, string(*internalErr))
+		}
+		return nil, err
+	}
+
+	log.Printf("transaction hash: %s", txnResult.Hash().Hex())
+
+	receipt, err := txnResult.Wait()
+	if err != nil {
+		return nil, err
+	}
+	if receipt.Status == 0 {
+		return nil, fmt.Errorf("receipt status: failed")
+	}
+	return receipt, nil
+}
+
 type Framework struct {
 	config        *Config
 	KettleAddress common.Address
 
-	Suave *Chain
-	L1    *Chain
+	Suave    *Chain
+	L1       *Chain
+	L1Relay  *RelayClient
+	L1Beacon *ethHttp.Service
 }
 
 type Config struct {
@@ -191,6 +252,9 @@ type Config struct {
 	FundedAccount *PrivKey `env:"KETTLE_PRIVKEY, default=91ab9a7e53c220e6210460b65a7a3bb2ca181412a8a7b43ff336b3df1737ce12"`
 
 	L1RPC string `env:"L1_RPC, default=http://localhost:8555"`
+
+	L1BeaconURL string `env:"L1_BEACON_URL, default=https://ethereum-beacon-api.publicnode.com"`
+	L1RelayURL  string `env:"L1_RELAY_URL, default=https://boost-relay.flashbots.net"`
 
 	// This account is funded in your local L1 devnet
 	// address: 0xB5fEAfbDD752ad52Afb7e1bD2E40432A485bBB7F
@@ -242,6 +306,19 @@ func New(opts ...ConfigOption) *Framework {
 		}
 		l1Clt := sdk.NewClient(l1RPC, config.FundedAccountL1.Priv, common.Address{})
 		fr.L1 = &Chain{rpc: l1RPC, clt: l1Clt}
+		beaconClient, err := ethHttp.New(context.Background(), ethHttp.WithAddress(config.L1BeaconURL))
+		if err != nil {
+			panic(err)
+		}
+		beaconService, ok := beaconClient.(*ethHttp.Service)
+		if !ok {
+			panic("failed to create L1 beacon client")
+		}
+		fr.L1Beacon = beaconService
+		fr.L1Relay = &RelayClient{
+			httpClient: http.DefaultClient,
+			relayURL:   config.L1RelayURL,
+		}
 	}
 
 	return fr
@@ -254,13 +331,24 @@ type Chain struct {
 }
 
 func (c *Chain) DeployContract(path string) *Contract {
+	return c.DeployContractWithArgs(path, make([]interface{}, 0)...)
+}
+
+func (c *Chain) DeployContractWithArgs(path string, constructorArgs ...interface{}) *Contract {
 	artifact, err := ReadArtifact(path)
 	if err != nil {
 		panic(err)
 	}
 
+	// encode constructorArgs to append to the contract code
+	constructorData, err := artifact.Abi.Constructor.Inputs.Pack(constructorArgs...)
+	if err != nil {
+		panic(err)
+	}
+	deployCode := append(artifact.Code, constructorData...)
+
 	// deploy contract
-	txnResult, err := sdk.DeployContract(artifact.Code, c.clt)
+	txnResult, err := sdk.DeployContract(deployCode, c.clt)
 	if err != nil {
 		panic(err)
 	}
