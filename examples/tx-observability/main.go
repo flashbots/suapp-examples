@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/flashbots/suapp-examples/framework"
 )
 
@@ -22,12 +21,8 @@ func main() {
 		log.Fatal("confidential request failed")
 	}
 
-	logEntry := types.Log{
-		Data:   res.Logs[0].Data,
-		Topics: res.Logs[0].Topics,
-	}
 	var event SentTransactionsEvent
-	err := suappContract.Abi.UnpackIntoInterface(&event, "SentTransactions", logEntry.Data)
+	err := suappContract.Abi.UnpackIntoInterface(&event, "SentTransactions", res.Logs[0].Data)
 	if err != nil {
 		log.Fatalf("Failed to unpack log data: %v", err)
 	}
