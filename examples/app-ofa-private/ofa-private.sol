@@ -4,6 +4,22 @@ pragma solidity ^0.8.8;
 import "suave-std/suavelib/Suave.sol";
 import "suave-std/Context.sol";
 
+library DagStore {
+    function get(bytes32 id) internal returns (bytes memory) {
+        bytes memory body = abi.encodePacked('{"jsonrpc":"2.0","method":"batches.Pull","params":["', id, '"],"id":1}');
+        string[] memory headers = new string[](1);
+        headers[0] = "Content-Type: application/json";
+        Suave.HttpRequest memory request = Suave.HttpRequest({
+            url: "http://localhost:8000",
+            method: "GET",
+            headers: headers,
+            body: body,
+            withFlashbotsSignature: false
+        });
+        return Suave.doHTTPRequest(request);
+    }
+}
+
 contract OFAPrivate {
     // Struct to hold hint-related information for an order.
     struct HintOrder {
@@ -11,7 +27,7 @@ contract OFAPrivate {
         bytes hint;
     }
 
-    event HintEvent(Suave.DataId id, bytes hint);
+    event HintEvent(Suave.DataId id, bytes hint, bytes res);
 
     event BundleEmitted(string bundleRawResponse);
 
@@ -43,14 +59,17 @@ contract OFAPrivate {
         return hintOrder;
     }
 
-    function emitHint(HintOrder memory order) public {
-        emit HintEvent(order.id, order.hint);
+    function emitHint(HintOrder memory order, bytes memory dagResult) public {
+        emit HintEvent(order.id, order.hint, dagResult);
     }
 
     // Function to create a new user order
     function newOrder(uint64 decryptionCondition) external returns (bytes memory) {
         HintOrder memory hintOrder = saveOrder(decryptionCondition);
-        return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
+
+        bytes memory testRes = DagStore.get(keccak256("testkey"));
+
+        return abi.encodeWithSelector(this.emitHint.selector, hintOrder, testRes);
     }
 
     // Function to match and backrun another dataRecord.
@@ -64,7 +83,7 @@ contract OFAPrivate {
         dataRecords[1] = hintOrder.id;
         Suave.confidentialStore(hintOrder.id, "mevshare:v0:mergedDataRecords", abi.encode(dataRecords));
 
-        return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
+        return abi.encodeWithSelector(this.emitHint.selector, hintOrder, bytes("undefined"));
     }
 
     function emitMatchDataRecordAndHintCallback(string memory bundleRawResponse) external {
