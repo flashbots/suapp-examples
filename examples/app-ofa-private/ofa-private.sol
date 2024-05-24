@@ -8,7 +8,7 @@ library DagStore {
     address constant DAG_RETRIEVE = address(0); // TODO: fill in
     address constant DAG_STORE = address(0); // TODO: fill in
 
-    function get(bytes32 dagId) public view returns (bytes memory) {
+    function get(bytes32 dagId) internal view returns (bytes memory) {
         (bool success, bytes memory data) = DAG_RETRIEVE.call(abi.encode(dagId));
         if (!success) {
             revert PeekerReverted(DAG_RETRIEVE, data);
@@ -16,13 +16,11 @@ library DagStore {
         return data;
     }
 
-    function set(bytes memory data) public returns (bytes32 dagId) {
-        bytes32 dagId = keccak256(data);
+    function set(bytes32 dagId, bytes memory data) internal {
         (bool success, bytes memory data) = DAG_STORE.call(abi.encode(dagId, data));
         if (!success) {
             revert PeekerReverted(DAG_STORE, data);
         }
-        return dagId;
     }
 }
 
