@@ -5,8 +5,8 @@ import "suave-std/suavelib/Suave.sol";
 import "suave-std/Context.sol";
 
 library DagStore {
-    address constant DAG_RETRIEVE = address(0); // TODO: fill in
-    address constant DAG_STORE = address(0); // TODO: fill in
+    address constant DAG_RETRIEVE = address(0x0000000000000000000000000000000052020001);
+    address constant DAG_STORE = address(0x0000000000000000000000000000000052020000);
 
     function get(bytes32 dagId) internal view returns (bytes memory) {
         (bool success, bytes memory data) = DAG_RETRIEVE.call(abi.encode(dagId));
