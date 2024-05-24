@@ -7,10 +7,12 @@ import "suave-std/Context.sol";
 library DagStore {
     function get(bytes32 id) internal returns (bytes memory) {
         bytes memory body = abi.encodePacked('{"jsonrpc":"2.0","method":"batches.Pull","params":["', id, '"],"id":1}');
+        string[] memory headers = new string[](1);
+        headers[0] = "Content-Type: application/json";
         Suave.HttpRequest memory request = Suave.HttpRequest({
             url: "http://localhost:8000",
             method: "GET",
-            headers: new string[](0),
+            headers: headers,
             body: body,
             withFlashbotsSignature: false
         });
