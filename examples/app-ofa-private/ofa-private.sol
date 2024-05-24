@@ -4,6 +4,25 @@ pragma solidity ^0.8.8;
 import "suave-std/suavelib/Suave.sol";
 import "suave-std/Context.sol";
 
+library DagStore {
+    address constant DAG_RETRIEVE = address(0); // TODO: fill in
+    address constant DAG_STORE = address(0); // TODO: fill in
+
+    function get(bytes32 dagId) public view returns (bytes memory) {
+        (bool success, bytes memory data) = DAG_RETRIEVE.call(abi.encode(dagId));
+        if (!success) {
+            revert PeekerReverted(DAG_RETRIEVE, data);
+        }
+    }
+
+    function set(bytes32 dagId, bytes memory data) public {
+        (bool success, bytes memory data) = DAG_STORE.call(abi.encode(dagId, data));
+        if (!success) {
+            revert PeekerReverted(DAG_STORE, data);
+        }
+    }
+}
+
 contract OFAPrivate {
     // Struct to hold hint-related information for an order.
     struct HintOrder {
