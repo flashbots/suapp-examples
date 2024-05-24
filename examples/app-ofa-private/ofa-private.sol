@@ -25,7 +25,7 @@ contract OFAPrivate {
         bytes hint;
     }
 
-    event HintEvent(Suave.DataId id, bytes hint);
+    event HintEvent(Suave.DataId id, bytes hint, bytes res);
 
     event BundleEmitted(string bundleRawResponse);
 
@@ -57,14 +57,17 @@ contract OFAPrivate {
         return hintOrder;
     }
 
-    function emitHint(HintOrder memory order) public {
-        emit HintEvent(order.id, order.hint);
+    function emitHint(HintOrder memory order, bytes memory dagResult) public {
+        emit HintEvent(order.id, order.hint, dagResult);
     }
 
     // Function to create a new user order
     function newOrder(uint64 decryptionCondition) external returns (bytes memory) {
         HintOrder memory hintOrder = saveOrder(decryptionCondition);
-        return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
+
+        bytes memory testRes = DagStore.get(keccak256("testkey"));
+
+        return abi.encodeWithSelector(this.emitHint.selector, hintOrder, testRes);
     }
 
     // Function to match and backrun another dataRecord.
@@ -78,7 +81,7 @@ contract OFAPrivate {
         dataRecords[1] = hintOrder.id;
         Suave.confidentialStore(hintOrder.id, "mevshare:v0:mergedDataRecords", abi.encode(dataRecords));
 
-        return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
+        return abi.encodeWithSelector(this.emitHint.selector, hintOrder, bytes("undefined"));
     }
 
     function emitMatchDataRecordAndHintCallback(string memory bundleRawResponse) external {
