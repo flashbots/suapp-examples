@@ -4,6 +4,20 @@ pragma solidity ^0.8.8;
 import "suave-std/suavelib/Suave.sol";
 import "suave-std/Context.sol";
 
+library DagStore {
+    function get(bytes32 id) internal returns (bytes memory) {
+        bytes memory body = string.concat('{"jsonrpc":"2.0","method":"batches_pull","params":["', id, '"],"id":1}');
+        Suave.HttpRequest memory request = Suave.HttpRequest({
+            url: "http://localhost:8000",
+            method: "GET",
+            headers: [],
+            body: body,
+            withFlashbotsSignature: false
+        });
+        return Suave.doHTTPRequest(request);
+    }
+}
+
 contract OFAPrivate {
     // Struct to hold hint-related information for an order.
     struct HintOrder {
