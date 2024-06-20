@@ -247,20 +247,33 @@ func New(opts ...ConfigOption) *Framework {
 	return fr
 }
 
+func (f *Framework) GetConfigs() *Config {
+	return f.config
+}
+
 type Chain struct {
 	rpc        *rpc.Client
 	clt        *sdk.Client
 	kettleAddr common.Address
 }
 
-func (c *Chain) DeployContract(path string) *Contract {
+func (c *Chain) DeployContract(path string, args ...interface{}) *Contract {
 	artifact, err := ReadArtifact(path)
 	if err != nil {
 		panic(err)
 	}
 
+	bytecode := artifact.Code
+	if len(args) > 0 {
+		packedArgs, err := artifact.Abi.Pack("", args...)
+		if err != nil {
+			panic(err)
+		}
+		bytecode = append(bytecode, packedArgs...)
+	}
+
 	// deploy contract
-	txnResult, err := sdk.DeployContract(artifact.Code, c.clt)
+	txnResult, err := sdk.DeployContract(bytecode, c.clt)
 	if err != nil {
 		panic(err)
 	}
