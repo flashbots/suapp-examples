@@ -9,12 +9,14 @@ import (
 )
 
 func main() {
-	fr := framework.New()
-	contract := fr.Suave.DeployContract("private-swap.sol/PrivateSwap.json")
+	fr := framework.New(framework.WithL1())
 
 	// deploy some example pool contract with swap function
-	poolContract := fr.Suave.DeployContract("pool.sol/Pool.json")
-	lp := poolContract.Raw().Address()
+	poolContract := fr.L1.DeployContract("pool.sol/Pool.json")
+	lpAddress := poolContract.Raw().Address()
+
+	constructorArgs := []interface{}{fr.GetConfigs().L1RPC, lpAddress}
+	contract := fr.Suave.DeployContract("private-swap.sol/PrivateSwap.json", constructorArgs...)
 
 	// params for confidential request
 	from := common.HexToAddress("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
@@ -26,7 +28,7 @@ func main() {
 		log.Fatal(err, "failed to pack inputs")
 	}
 
-	receipt := contract.SendConfidentialRequest("example", []interface{}{lp}, encodedInputs)
+	receipt := contract.SendConfidentialRequest("example", []interface{}{}, encodedInputs)
 
 	swapEvent, err := contract.Abi.Events["Swap"].ParseLog(receipt.Logs[0])
 	if err != nil {
