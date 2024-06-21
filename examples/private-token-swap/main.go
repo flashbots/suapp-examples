@@ -14,8 +14,9 @@ func main() {
 	// deploy some example pool contract with swap function
 	poolContract := fr.L1.DeployContract("pool.sol/Pool.json")
 	lpAddress := poolContract.Raw().Address()
+	l1RPCInternalURL := "http://" + framework.GatewayAddr() + ":8555"
 
-	constructorArgs := []interface{}{fr.GetConfigs().L1RPC, lpAddress}
+	constructorArgs := []interface{}{l1RPCInternalURL, lpAddress}
 	contract := fr.Suave.DeployContract("private-swap.sol/PrivateSwap.json", constructorArgs...)
 
 	// params for confidential request
