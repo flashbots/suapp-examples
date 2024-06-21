@@ -251,6 +251,14 @@ func (f *Framework) GetConfigs() *Config {
 	return f.config
 }
 
+func (f *Framework) GetSuaveL1RPC() string {
+	if strings.Contains(f.config.L1RPC, "localhost") {
+		return "http://" + GatewayAddr() + ":" + strings.Split(f.config.L1RPC, ":")[2]
+	}
+
+	return f.config.L1RPC
+}
+
 type Chain struct {
 	rpc        *rpc.Client
 	clt        *sdk.Client
