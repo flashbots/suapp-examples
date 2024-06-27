@@ -228,6 +228,7 @@ func New(opts ...ConfigOption) *Framework {
 	}
 
 	suaveClt := sdk.NewClient(kettleRPC, config.FundedAccount.Priv, accounts[0])
+	suaveClt.WithEIP712()
 
 	fr := &Framework{
 		config:        &config,

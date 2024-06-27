@@ -4,7 +4,7 @@ go 1.21
 
 toolchain go1.21.3
 
-replace github.com/ethereum/go-ethereum => github.com/flashbots/suave-geth v0.1.3
+replace github.com/ethereum/go-ethereum => github.com/flashbots/suave-geth v0.2.0
 
 require (
 	github.com/ethereum/go-ethereum v1.12.0

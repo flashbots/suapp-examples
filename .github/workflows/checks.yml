@@ -65,6 +65,9 @@ jobs:
       - name: Install suave-geth
         uses: flashbots/suave-toolchain@v0.1
 
+      - name: Show suave-geth version
+        run: suave-geth --version
+
       - name: Run suave
         run: |
           make devnet-up
