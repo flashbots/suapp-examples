@@ -63,10 +63,6 @@ forge build
     # Launch kurtosis devnet + sidecar docker-compose with SUAVE
     make devnet-up
 
-    # Point SUAVE examples to the devnet
-    export BUILDER_URL=http://el-4-geth-builder-lighthouse:8545
-    export L1_PRIVKEY=bcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31
-
     # Run
     go run examples/app-ofa-private/main.go
 
