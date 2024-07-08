@@ -253,14 +253,25 @@ type Chain struct {
 	kettleAddr common.Address
 }
 
-func (c *Chain) DeployContract(path string) *Contract {
+func (c *Chain) DeployContract(path string, args ...interface{}) *Contract {
 	artifact, err := ReadArtifact(path)
 	if err != nil {
 		panic(err)
 	}
 
+	bytecode := artifact.Code
+
+	// add contructor arguments
+	if len(args) > 0 {
+		packedArgs, err := artifact.Abi.Pack("", args...)
+		if err != nil {
+			panic(err)
+		}
+		bytecode = append(bytecode, packedArgs...)
+	}
+
 	// deploy contract
-	txnResult, err := sdk.DeployContract(artifact.Code, c.clt)
+	txnResult, err := sdk.DeployContract(bytecode, c.clt)
 	if err != nil {
 		panic(err)
 	}
