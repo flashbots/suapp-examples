@@ -4,10 +4,30 @@ pragma solidity ^0.8.8;
 import "suave-std/suavelib/Suave.sol";
 import "suave-std/Context.sol";
 
+library DagStore {
+    address constant DAG_RETRIEVE = address(0x0000000000000000000000000000000052020001);
+    address constant DAG_STORE = address(0x0000000000000000000000000000000052020000);
+
+    function get(bytes32 dagId) internal view returns (bytes memory) {
+        (bool success, bytes memory data) = DAG_RETRIEVE.call(abi.encode(dagId));
+        if (!success) {
+            revert PeekerReverted(DAG_RETRIEVE, data);
+        }
+        return data;
+    }
+
+    function set(bytes32 dagId, bytes memory data) internal {
+        (bool success, bytes memory data) = DAG_STORE.call(abi.encode(dagId, data));
+        if (!success) {
+            revert PeekerReverted(DAG_STORE, data);
+        }
+    }
+}
+
 contract OFAPrivate {
     // Struct to hold hint-related information for an order.
     struct HintOrder {
-        Suave.DataId id;
+        bytes32 id;
         bytes hint;
     }
 
@@ -32,12 +52,13 @@ contract OFAPrivate {
         allowedList[1] = 0x0000000000000000000000000000000043200001;
 
         // Store the bundle and the simulation results in the confidential datastore.
-        Suave.DataRecord memory dataRecord = Suave.newDataRecord(decryptionCondition, allowedList, allowedList, "");
-        Suave.confidentialStore(dataRecord.id, "mevshare:v0:ethBundles", bundleData);
-        Suave.confidentialStore(dataRecord.id, "mevshare:v0:ethBundleSimResults", abi.encode(egp));
+        // Suave.DataRecord memory dataRecord = Suave.newDataRecord(decryptionCondition, allowedList, allowedList, "");
+        // Suave.confidentialStore(dataRecord.id, "mevshare:v0:ethBundles", bundleData);
+        // Suave.confidentialStore(dataRecord.id, "mevshare:v0:ethBundleSimResults", abi.encode(egp));
+        dagId = DagStore.set(bundleData);
 
         HintOrder memory hintOrder;
-        hintOrder.id = dataRecord.id;
+        hintOrder.id = dagId;
         hintOrder.hint = hint;
 
         return hintOrder;
@@ -54,7 +75,7 @@ contract OFAPrivate {
     }
 
     // Function to match and backrun another dataRecord.
-    function newMatch(Suave.DataId shareDataRecordId, uint64 decryptionCondition) external returns (bytes memory) {
+    function newMatch(bytes32 shareDataRecordId, uint64 decryptionCondition) external returns (bytes memory) {
         HintOrder memory hintOrder = saveOrder(decryptionCondition);
 
         // Merge the dataRecords and store them in the confidential datastore.
@@ -62,9 +83,10 @@ contract OFAPrivate {
         Suave.DataId[] memory dataRecords = new Suave.DataId[](2);
         dataRecords[0] = shareDataRecordId;
         dataRecords[1] = hintOrder.id;
-        Suave.confidentialStore(hintOrder.id, "mevshare:v0:mergedDataRecords", abi.encode(dataRecords));
+        // Suave.confidentialStore(hintOrder.id, "mevshare:v0:mergedDataRecords", abi.encode(dataRecords));
+        bytes32 recordsId = DagStore.set(abi.encode(dataRecords));
 
-        return abi.encodeWithSelector(this.emitHint.selector, hintOrder);
+        return abi.encodeWithSelector(this.emitHint.selector, recordsId);
     }
 
     function emitMatchDataRecordAndHintCallback(string memory bundleRawResponse) external {
