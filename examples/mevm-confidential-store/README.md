@@ -7,7 +7,7 @@ This example features how to use the Confidential Store.
 Run `Suave` in development mode:
 
 ```
-$ suave --suave.dev
+$ suave-geth --suave.dev
 ```
 
 Execute the deployment script:

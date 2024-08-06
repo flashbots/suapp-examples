@@ -7,7 +7,7 @@ This example shows how to use the `suave-std` library to create and sign transac
 Run `Suave` in development mode:
 
 ```
-$ suave --suave.dev
+$ suave-geth --suave.dev
 ```
 
 Execute the deployment script:

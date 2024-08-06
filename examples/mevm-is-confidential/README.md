@@ -7,7 +7,7 @@ This example shows how to use the IsConfidential precompile. This precompile ret
 Run `Suave` in development mode:
 
 ```
-$ suave --suave.dev
+$ suave-geth --suave.dev
 ```
 
 Execute the deployment script:

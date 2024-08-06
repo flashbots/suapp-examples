@@ -1,4 +1,3 @@
-
 # Example Suapp with a Private library
 
 This example shows how Suapps can use private libraries that are not public in the Suave chain.
@@ -10,7 +9,7 @@ The private code is sent inside the confidential part of the confidential comput
 Run `Suave` in development mode:
 
 ```
-$ suave --suave.dev
+$ suave-geth --suave.dev
 ```
 
 Execute the deployment script:

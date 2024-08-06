@@ -1,4 +1,3 @@
-
 # Example Suapp with a Private library
 
 This example shows how Suapps can use private libraries stored in the confidential store that are not public in the Suave chain.
@@ -10,7 +9,7 @@ The private code is saved in the confidential store with the `registerContract` 
 Run `Suave` in development mode:
 
 ```
-$ suave --suave.dev
+$ suave-geth --suave.dev
 ```
 
 Execute the deployment script:

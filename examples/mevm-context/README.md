@@ -9,7 +9,7 @@ The `suave-std` suite provides a high-level interface to the MEVM context with t
 Run `Suave` in development mode:
 
 ```
-$ suave --suave.dev
+$ suave-geth --suave.dev
 ```
 
 Execute the deployment script:

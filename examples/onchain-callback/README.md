@@ -9,7 +9,7 @@ Only logs emitted during the onchain execution are available for querying on the
 Run `Suave` in development mode:
 
 ```
-$ suave --suave.dev
+$ suave-geth --suave.dev
 ```
 
 Execute the deployment script:

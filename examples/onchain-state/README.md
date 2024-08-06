@@ -1,4 +1,3 @@
-
 # Example Suapp with OnChain state
 
 This example shows how Suapps can update state of the smart contract on the Suave chain.
@@ -10,7 +9,7 @@ State variables updated during the confidential request are not updated on the s
 Run `Suave` in development mode:
 
 ```
-$ suave --suave.dev
+$ suave-geth --suave.dev
 ```
 
 Execute the deployment script:

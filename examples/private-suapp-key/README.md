@@ -7,7 +7,7 @@ This example shows how Suapps can store private keys in the confidential storage
 Run `Suave` in development mode:
 
 ```
-$ suave --suave.dev
+$ suave-geth --suave.dev
 ```
 
 Execute the deployment script:
