@@ -7,7 +7,7 @@ This example features how a Suapp can use the [`Gateway.sol`](https://github.com
 Run `Suave` in development mode:
 
 ```
-$ suave --suave.dev
+$ suave-geth --suave.dev
 ```
 
 Export the JSON-RPC URL of the chain where the ERC20 contract is deployed:

@@ -7,7 +7,7 @@ This is a variation of the [private-suapp-key](../private-suapp-key) example. Th
 Run `Suave` in development mode:
 
 ```
-$ suave --suave.dev
+$ suave-geth --suave.dev
 ```
 
 Execute the deployment script:
