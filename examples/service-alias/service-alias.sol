@@ -16,7 +16,7 @@ contract ServiceAlias is Suapp {
         bytes memory response1 = Suave.doHTTPRequest(request);
 
         // Make the request to the http endpoint
-        request.url = "http://example.com";
+        request.url = "https://example.com";
         bytes memory response2 = Suave.doHTTPRequest(request);
 
         require(keccak256(response1) == keccak256(response2), "Strings should be equal");
