@@ -3,6 +3,7 @@ package framework
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding"
 	"encoding/hex"
 	"encoding/json"
@@ -348,4 +349,14 @@ func GatewayAddr() string {
 		return "172.17.0.1"
 	}
 	return "host.docker.internal"
+}
+
+func RandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, length)
+	rand.Read(b)
+	for i := range b {
+		b[i] = charset[b[i]%byte(len(charset))]
+	}
+	return string(b)
 }
