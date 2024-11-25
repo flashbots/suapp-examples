@@ -164,8 +164,6 @@ func (c *Contract) SendConfidentialRequest(method string, args []interface{}, co
 		panic(err)
 	}
 
-	log.Printf("transaction hash: %s", txnResult.Hash().Hex())
-
 	receipt, err := txnResult.Wait()
 	if err != nil {
 		panic(err)
