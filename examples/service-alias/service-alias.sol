@@ -13,13 +13,16 @@ contract ServiceAlias is Suapp {
         request.method = "GET";
         request.timeout = 1000;
 
-        bytes memory response1 = Suave.doHTTPRequest(request);
+        Suave.HttpResponse memory response1 = Suave.doHTTPRequest2(request);
 
         // Make the request to the http endpoint
         request.url = "https://example.com";
-        bytes memory response2 = Suave.doHTTPRequest(request);
+        Suave.HttpResponse memory response2 = Suave.doHTTPRequest2(request);
 
-        require(keccak256(response1) == keccak256(response2), "Strings should be equal");
+        require(response1.status == 200, "Status should be 200");
+        require(response2.status == 200, "Status should be 200");
+
+        require(keccak256(response1.body) == keccak256(response2.body), "Strings should be equal");
         return abi.encodeWithSelector(this.exampleCallback.selector);
     }
 }
